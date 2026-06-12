@@ -56,7 +56,7 @@ public class ConsoleView {
 
         System.out.println("  [1] 시료 관리          [2] 주문 접수");
         System.out.println("  [3] 주문 승인/거절      [4] 모니터링");
-        System.out.println("  [5] 생산 라인          [6] 더미 데이터");
+        System.out.println("  [5] 생산 라인          [6] 출고 처리");
         System.out.println("  [0] 종료");
         System.out.println(SEP60);
         System.out.print("선택 > ");
@@ -328,6 +328,7 @@ public class ConsoleView {
         System.out.printf("  %-15s  %s%n", "상태", "건수");
         System.out.println("  " + "─".repeat(30));
         for (OrderStatus status : OrderStatus.values()) {
+            if (status == OrderStatus.REJECTED) continue;
             long count = countMap.getOrDefault(status, 0L);
             System.out.printf("  %s  %d건%n", badge(status), count);
         }

@@ -71,7 +71,8 @@ public class Main {
                     case "2", "3" -> orderCtrl.handle();
                     case "4" -> monitorCtrl.handle();
                     case "5" -> productionCtrl.handle();
-                    case "6" -> dummyCtrl.handle();
+                    case "6" -> orderCtrl.handleRelease();
+                    case "d" -> dummyCtrl.handle();
                     default  -> view.showError("잘못된 메뉴 입력입니다.");
                 }
             } catch (IllegalArgumentException | IllegalStateException e) {

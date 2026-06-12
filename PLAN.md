@@ -1,6 +1,6 @@
 # PLAN.md — 반도체 시료 생산주문관리 시스템
 
-**문서 버전**: 1.3  
+**문서 버전**: 1.5  
 **작성일**: 2026-06-12  
 **프로젝트명**: SampleOrderSystem-PARKCHIWON-17061288
 
@@ -15,7 +15,9 @@
 | 3 | 서비스 레이어 | SampleService, OrderService, ProductionService, MonitorService + 테스트 23개 | [docs/phase3_plan.md](docs/phase3_plan.md) | ✅ 완료 |
 | 4 | 프레젠테이션 | Controller 5종, ConsoleView, Main | [docs/phase4_plan.md](docs/phase4_plan.md) | ✅ 완료 |
 | 5 | 더미 데이터 | SampleGenerator, OrderGenerator, DummyController | [docs/phase5_plan.md](docs/phase5_plan.md) | ✅ 완료 |
-| 6 | 콘솔 UI 개선 | ConsoleView 전면 개선, Controller 내부 루프화, ANSI 배지 | [docs/phase6_plan.md](docs/phase6_plan.md) | 🔲 예정 |
+| 6 | 콘솔 UI 개선 | ConsoleView 전면 개선, Controller 내부 루프화, ANSI 배지 | [docs/phase6_plan.md](docs/phase6_plan.md) | ✅ 완료 |
+| Hotfix-1 | 모니터링 REJECTED 행 제거 | ConsoleView.showOrderCountWithBadge() 뷰 레이어 REJECTED 제외 | — | ✅ 완료 |
+| Hotfix-2 | 메인 메뉴 재구성 | [6] 더미→출고처리, 더미는 숨김 커맨드 `d`로 이동 | — | 🔲 예정 |
 
 ### 레이어 의존성 흐름
 
@@ -283,9 +285,9 @@ src/main/java/org/example/Main.java                               (수정 — Du
 
 ---
 
-## Phase 6: 콘솔 UI 개선 🔲
+## Phase 6: 콘솔 UI 개선 ✅
 
-> **상태**: 예정  
+> **상태**: 완료  
 > **상세 설계 정본**: [`docs/phase6_plan.md`](docs/phase6_plan.md)  
 > 구현 명세 및 완전한 코드는 위 문서를 참조한다.
 
@@ -316,6 +318,110 @@ src/main/java/org/example/Main.java                               (수정)
 ### 구현 상세
 
 > 상세 구현 코드는 [`docs/phase6_plan.md`](docs/phase6_plan.md)를 참조한다.
+
+---
+
+---
+
+## Hotfix-1: 모니터링 REJECTED 행 제거 🔲
+
+> **상태**: 예정
+
+### Hotfix 목표
+
+E2E 요구사항 검증(REQ-5-1, REQ-8-6) 결과, `ConsoleView.showOrderCountWithBadge()`가 뷰 레이어에서 `OrderStatus.values()` 전체를 순회하여 REJECTED 행이 "0건"으로 화면에 노출되는 문제를 수정한다. 서비스 레이어(`MonitorService.getOrderCountByStatus()`)는 이미 REJECTED를 올바르게 필터링하고 있으며, 뷰 레이어에서만 수정이 필요하다.
+
+### FR-H1 — showOrderCountWithBadge() REJECTED 행 제외
+
+- **대상 메서드**: `ConsoleView.showOrderCountWithBadge(Map<OrderStatus, Long> countMap)`
+- **변경 내용**: 루프 내부에서 `OrderStatus.REJECTED`를 건너뛰도록 조건 추가
+- **변경 전**: `for (OrderStatus status : OrderStatus.values())` 로 모든 상태를 순회
+- **변경 후**: 루프 내부 첫 줄에 `if (status == OrderStatus.REJECTED) continue;` 추가
+- **근거**: PDF 요구사항 — "주문량: 상태별(RESERVED/CONFIRMED/PRODUCING/RELEASE) 수 확인 (REJECTED 제외)"
+
+### 변경 대상 파일
+
+```
+src/main/java/org/example/view/ConsoleView.java   (수정 — showOrderCountWithBadge 메서드 1줄 추가)
+```
+
+### 변경 금지 파일
+
+이 Hotfix에서 `ConsoleView.java` 외 모든 파일은 수정하지 않는다.
+
+### 완료 기준
+
+- `ConsoleView.showOrderCountWithBadge()` 호출 시 REJECTED 행이 화면에 출력되지 않음
+- `./gradlew test` 전체 GREEN 유지
+- `./gradlew build` 에러 없음
+
+---
+
+---
+
+## Hotfix-2: 메인 메뉴 재구성 — 출고 처리 분리 🔲
+
+> **상태**: 예정
+
+### Hotfix 목표
+
+E2E 검증 결과 메인 메뉴 [6]번이 "더미 데이터"로 표시되어 PDF 요구사항(메인 메뉴에 출고 처리 노출)을 위반하고 있다. 출고 처리를 메인 메뉴 [6]으로 분리하고, 더미 데이터는 숨김 커맨드(`d`)로 이동한다.
+
+### 변경 배경
+
+Phase 6에서 출고 처리를 `OrderController.handle()` 내부([4]번 서브메뉴)로 통합하면서 메인 메뉴에서 사라짐. 결과적으로 메인 메뉴는 아래와 같이 어긋난 상태:
+
+| 번호 | 현재 (잘못됨) | 목표 (PDF 준수) |
+|------|-------------|----------------|
+| [1] | 시료 관리 | 시료 관리 |
+| [2] | 주문 접수 | 주문 접수 |
+| [3] | 주문 승인/거절 | 주문 승인/거절 |
+| [4] | 모니터링 | 모니터링 |
+| [5] | 생산 라인 | 생산 라인 |
+| [6] | 더미 데이터 ❌ | 출고 처리 ✅ |
+| `d` | (없음) | 더미 데이터 (숨김) |
+
+### FR-H2-1 — ConsoleView.showMainMenu() 메뉴 텍스트 수정
+
+- `[6] 더미 데이터` → `[6] 출고 처리` 로 변경
+- 숨김 커맨드 안내는 메뉴에 표시하지 않는다 (더미 데이터는 개발자 전용 내부 도구)
+
+### FR-H2-2 — Main.java 라우팅 수정
+
+- `case "6" -> dummyCtrl.handle()` → `case "6" -> orderCtrl.handleRelease()` 로 변경
+- `case "d" -> dummyCtrl.handle()` 를 새로 추가 (숨김 커맨드)
+
+### FR-H2-3 — OrderController 출고 처리 분리
+
+- 기존 `handle()` 내부의 `case "4" -> release()` 를 제거한다
+- `handle()` 내 서브메뉴에서 [4] 출고 처리 항목도 제거한다
+- `release()` 메서드를 `private` → `public`으로 변경하여 Main에서 직접 호출 가능하도록 한다
+- 또는 `public void handleRelease()` 래퍼 메서드를 추가한다 (내부에서 `release()` 호출)
+
+### 변경 대상 파일
+
+```
+src/main/java/org/example/view/ConsoleView.java            (수정 — showMainMenu 텍스트 1줄)
+src/main/java/org/example/Main.java                        (수정 — case "6" 변경, case "d" 추가)
+src/main/java/org/example/controller/OrderController.java  (수정 — handle() 내 [4] 제거, handleRelease() 추가)
+docs/phase6_plan.md                                        (수정 — Hotfix-2 변경 사항 반영)
+```
+
+### 변경 금지 파일
+
+위 4개 파일 외 모든 파일은 수정하지 않는다.
+
+> **참고**: `OrderServiceTest.java`의 `release_confirmedOrder_setsRelease`, `release_nonConfirmedStatus_throwsIllegalStateException` 2개 테스트는 Phase 3에서 이미 구현되어 있으므로 신규 추가 불필요.
+
+### 완료 기준
+
+- 메인 메뉴 화면에 `[6] 출고 처리` 표시
+- 메인에서 `6` 입력 시 출고 처리 플로우 실행
+- 메인에서 `d` 입력 시 더미 데이터 생성 플로우 실행
+- `OrderController.handle()` 내부 서브메뉴에 [4] 출고 처리 항목 없음
+- `./gradlew test` 전체 GREEN 유지 (46개 — release 테스트는 Phase 3에서 이미 포함)
+- `./gradlew build` 에러 없음
+- `docs/phase6_plan.md` 완료 기준 8·9번 문구가 Hotfix-2 변경 사항과 일치
 
 ---
 

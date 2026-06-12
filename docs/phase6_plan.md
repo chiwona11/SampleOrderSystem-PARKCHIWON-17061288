@@ -15,7 +15,7 @@
 - 재고 현황 테이블에 프로그레스 바를 추가한다.
 - 주문 승인 플로우를 번호 선택 방식으로 개선한다.
 - 주문 접수 플로우에 확인 요약 + Y/N 프롬프트를 추가한다.
-- 출고 처리를 OrderController 내부 루프로 통합하고 Main에서 별도 분기를 제거한다.
+- 출고 처리를 메인 메뉴 [6]으로 분리하고, 더미 데이터는 숨김 커맨드(`d`)로 이동한다. (Hotfix-2 반영)
 - MonitorController가 시료명 매핑을 위해 SampleRepository도 주입받는다.
 - 생산라인 조회를 FIFO 뷰로 개선한다: 현재 처리 중 블록(주문번호·시료·주문량→재고→부족→실생산량) + 대기 중인 주문 테이블(순서·주문번호·시료·주문량·부족분·실생산량) + 공식/FIFO 안내 문구.
 - 출고 처리 완료 결과를 "CONFIRMED → RELEASE" 화살표 전환 표시 방식으로 개선한다.
@@ -99,7 +99,7 @@ public class ConsoleView {
 
         System.out.println("  [1] 시료 관리          [2] 주문 접수");
         System.out.println("  [3] 주문 승인/거절      [4] 모니터링");
-        System.out.println("  [5] 생산 라인          [6] 더미 데이터");
+        System.out.println("  [5] 생산 라인          [6] 출고 처리");
         System.out.println("  [0] 종료");
         System.out.println(SEP60);
         System.out.print("선택 > ");
@@ -674,13 +674,13 @@ public class OrderController {
 
     /**
      * 내부 루프를 돌며 "0" 입력 시 반환.
-     * 주문 접수(1), 승인(2), 거절(3), 출고(4) 모두 이 루프 내에서 처리.
+     * 주문 접수(1), 승인(2), 거절(3) 처리. 출고는 메인 메뉴 [6]으로 분리됨. (Hotfix-2)
      */
     public void handle() {
         while (true) {
             view.showSectionHeader("[2/3] 주문 관리");
             view.showSubMenu(
-                "[1] 주문 접수", "[2] 주문 승인", "[3] 주문 거절", "[4] 출고 처리", "[0] 뒤로");
+                "[1] 주문 접수", "[2] 주문 승인", "[3] 주문 거절", "[0] 뒤로");
             String input = view.readLineRaw();
             if ("0".equals(input)) break;
             try {
@@ -688,12 +688,22 @@ public class OrderController {
                     case "1" -> placeOrder();
                     case "2" -> approve();
                     case "3" -> reject();
-                    case "4" -> release();
                     default  -> view.showError("잘못된 입력입니다.");
                 }
             } catch (IllegalArgumentException | IllegalStateException e) {
                 view.showError(e.getMessage());
             }
+        }
+    }
+
+    /**
+     * 메인 메뉴 [6] 출고 처리 진입점. (Hotfix-2)
+     */
+    public void handleRelease() {
+        try {
+            release();
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            view.showError(e.getMessage());
         }
     }
 
@@ -1014,7 +1024,7 @@ public class DummyController {
      */
     public void handle() {
         while (true) {
-            view.showSectionHeader("[6] 더미 데이터");
+            view.showSectionHeader("더미 데이터");
             view.showSubMenu("[1] 시료 더미 생성", "[2] 주문 더미 생성", "[0] 뒤로");
             String input = view.readLineRaw();
             if ("0".equals(input)) break;
@@ -1122,7 +1132,8 @@ public class Main {
                     case "2", "3" -> orderCtrl.handle();
                     case "4" -> monitorCtrl.handle();
                     case "5" -> productionCtrl.handle();
-                    case "6" -> dummyCtrl.handle();
+                    case "6" -> orderCtrl.handleRelease();
+                    case "d" -> dummyCtrl.handle();
                     default  -> view.showError("잘못된 메뉴 입력입니다.");
                 }
             } catch (IllegalArgumentException | IllegalStateException e) {
@@ -1144,8 +1155,8 @@ public class Main {
 5. 주문 접수 시 3개 필드 입력 후 확인 요약이 출력되고 Y/N 프롬프트가 나타난다.
 6. ANSI 지원 터미널에서 RESERVED/CONFIRMED/PRODUCING/REJECTED/RELEASE 상태 배지가 각각 파란색/초록색/노란색/빨간색/회색으로 표시된다.
 7. 모니터링 재고 현황 테이블에 `█`/`░` 프로그레스 바 컬럼과 시료명 컬럼이 포함된다.
-8. 메인 메뉴 선택 `2` 또는 `3` 입력 시 OrderController 내부 루프(주문 접수/승인/거절/출고 통합)로 진입한다.
-9. 출고 처리는 OrderController 내부(서브메뉴 `4`)에서 처리되며 Main에서 별도 분기가 없다.
+8. 메인 메뉴 선택 `2` 또는 `3` 입력 시 OrderController 내부 루프(주문 접수/승인/거절)로 진입한다. 출고 처리는 포함되지 않는다. (Hotfix-2)
+9. 출고 처리는 메인 메뉴 `6` 입력 시 `OrderController.handleRelease()`로 진입하며, 더미 데이터는 숨김 커맨드 `d`로 실행한다. (Hotfix-2)
 10. 생산라인 조회([5] → [2]) 시 "생산라인 1개 (단일 라인) 현재 상태: RUNNING/IDLE"이 표시되고, 큐가 있을 경우 첫 항목이 "현재 처리 중" 블록으로, 나머지가 "대기 중인 주문 (FIFO 순)" 테이블로 출력된다. 테이블 하단에 부족분 공식과 FIFO 안내 문구가 표시된다.
 11. 출고 처리 완료 시 "출고 처리 완료." 헤더와 함께 주문번호·출고수량·처리일시·상태(CONFIRMED → [RELEASE  ]) 항목이 출력된다.
 12. `./gradlew build` 에러 없이 완료된다.

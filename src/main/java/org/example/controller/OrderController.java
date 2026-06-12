@@ -43,7 +43,7 @@ public class OrderController {
         while (true) {
             view.showSectionHeader("[2/3] 주문 관리");
             view.showSubMenu(
-                "[1] 주문 접수", "[2] 주문 승인", "[3] 주문 거절", "[4] 출고 처리", "[0] 뒤로");
+                "[1] 주문 접수", "[2] 주문 승인", "[3] 주문 거절", "[0] 뒤로");
             String input = view.readLineRaw();
             if ("0".equals(input)) break;
             try {
@@ -51,7 +51,6 @@ public class OrderController {
                     case "1" -> placeOrder();
                     case "2" -> approve();
                     case "3" -> reject();
-                    case "4" -> release();
                     default  -> view.showError("잘못된 입력입니다.");
                 }
             } catch (IllegalArgumentException | IllegalStateException e) {
@@ -132,6 +131,14 @@ public class OrderController {
         }
         Order updated = orderService.reject(target.getId());
         view.showOrderStatusChanged(updated);
+    }
+
+    public void handleRelease() {
+        try {
+            release();
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            view.showError(e.getMessage());
+        }
     }
 
     private void release() {
