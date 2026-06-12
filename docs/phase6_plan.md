@@ -673,22 +673,71 @@ public class OrderController {
     }
 
     /**
-     * 내부 루프를 돌며 "0" 입력 시 반환.
-     * 주문 접수(1), 승인(2), 거절(3) 처리. 출고는 메인 메뉴 [6]으로 분리됨. (Hotfix-2)
+     * 메인 메뉴 [2] 주문 접수 전용 진입점. (Hotfix-3)
      */
-    public void handle() {
+    public void handlePlace() {
         while (true) {
-            view.showSectionHeader("[2/3] 주문 관리");
-            view.showSubMenu(
-                "[1] 주문 접수", "[2] 주문 승인", "[3] 주문 거절", "[0] 뒤로");
+            view.showSectionHeader("[2] 주문 접수");
+            view.showSubMenu("[1] 주문 접수", "[0] 뒤로");
             String input = view.readLineRaw();
             if ("0".equals(input)) break;
             try {
-                switch (input) {
-                    case "1" -> placeOrder();
-                    case "2" -> approve();
-                    case "3" -> reject();
-                    default  -> view.showError("잘못된 입력입니다.");
+                if ("1".equals(input)) placeOrder();
+                else view.showError("잘못된 입력입니다.");
+            } catch (IllegalArgumentException | IllegalStateException e) {
+                view.showError(e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * 메인 메뉴 [3] 주문 승인/거절 전용 진입점. (Hotfix-3)
+     * RESERVED 목록 출력 → 번호 선택 → [1] 승인 / [2] 거절 선택 루프.
+     */
+    public void handleApproveReject() {
+        while (true) {
+            view.showSectionHeader("[3] 주문 승인/거절");
+            List<Order> reserved = orderRepo.findByStatus(OrderStatus.RESERVED);
+            Map<String, String> sampleNameMap = buildSampleNameMap();
+            view.showNumberedOrderList(reserved, sampleNameMap);
+            if (reserved.isEmpty()) break;
+
+            view.showSubMenu("[번호] 선택", "[0] 뒤로");
+            String numInput = view.readLineRaw();
+            if ("0".equals(numInput)) break;
+
+            int idx;
+            try {
+                idx = Integer.parseInt(numInput);
+            } catch (NumberFormatException e) {
+                view.showError("숫자를 입력하세요.");
+                continue;
+            }
+            if (idx < 1 || idx > reserved.size()) {
+                view.showError("올바른 번호를 입력하세요.");
+                continue;
+            }
+            Order target = reserved.get(idx - 1);
+
+            view.showSubMenu("[1] 승인", "[2] 거절", "[0] 뒤로");
+            String action = view.readLineRaw();
+            try {
+                switch (action) {
+                    case "1" -> {
+                        String sampleName = sampleNameMap.getOrDefault(target.getSampleId(), target.getSampleId());
+                        Inventory inv = inventoryRepo.findOrCreate(target.getSampleId());
+                        view.showStockCheckDetail(sampleName, inv.getStock(), target.getQuantity());
+                        boolean ok = view.confirm("  이 주문을 승인하시겠습니까?");
+                        if (ok) view.showOrderStatusChanged(orderService.approve(target.getId()));
+                        else view.showInfo("  승인이 취소되었습니다.");
+                    }
+                    case "2" -> {
+                        boolean ok = view.confirm("  이 주문을 거절하시겠습니까?");
+                        if (ok) view.showOrderStatusChanged(orderService.reject(target.getId()));
+                        else view.showInfo("  거절이 취소되었습니다.");
+                    }
+                    case "0" -> { /* 목록으로 돌아감 */ }
+                    default -> view.showError("잘못된 입력입니다.");
                 }
             } catch (IllegalArgumentException | IllegalStateException e) {
                 view.showError(e.getMessage());
@@ -1129,7 +1178,8 @@ public class Main {
             try {
                 switch (input) {
                     case "1" -> sampleCtrl.handle();
-                    case "2", "3" -> orderCtrl.handle();
+                    case "2" -> orderCtrl.handlePlace();
+                    case "3" -> orderCtrl.handleApproveReject();
                     case "4" -> monitorCtrl.handle();
                     case "5" -> productionCtrl.handle();
                     case "6" -> orderCtrl.handleRelease();
@@ -1155,7 +1205,7 @@ public class Main {
 5. 주문 접수 시 3개 필드 입력 후 확인 요약이 출력되고 Y/N 프롬프트가 나타난다.
 6. ANSI 지원 터미널에서 RESERVED/CONFIRMED/PRODUCING/REJECTED/RELEASE 상태 배지가 각각 파란색/초록색/노란색/빨간색/회색으로 표시된다.
 7. 모니터링 재고 현황 테이블에 `█`/`░` 프로그레스 바 컬럼과 시료명 컬럼이 포함된다.
-8. 메인 메뉴 선택 `2` 또는 `3` 입력 시 OrderController 내부 루프(주문 접수/승인/거절)로 진입한다. 출고 처리는 포함되지 않는다. (Hotfix-2)
+8. 메인 메뉴 선택 `2` 입력 시 `handlePlace()` — `"[2] 주문 접수"` 헤더와 접수 전용 루프로 진입한다. 선택 `3` 입력 시 `handleApproveReject()` — `"[3] 주문 승인/거절"` 헤더와 RESERVED 목록 → 번호 선택 → 승인/거절 선택 루프로 진입한다. (Hotfix-3)
 9. 출고 처리는 메인 메뉴 `6` 입력 시 `OrderController.handleRelease()`로 진입하며, 더미 데이터는 숨김 커맨드 `d`로 실행한다. (Hotfix-2)
 10. 생산라인 조회([5] → [2]) 시 "생산라인 1개 (단일 라인) 현재 상태: RUNNING/IDLE"이 표시되고, 큐가 있을 경우 첫 항목이 "현재 처리 중" 블록으로, 나머지가 "대기 중인 주문 (FIFO 순)" 테이블로 출력된다. 테이블 하단에 부족분 공식과 FIFO 안내 문구가 표시된다.
 11. 출고 처리 완료 시 "출고 처리 완료." 헤더와 함께 주문번호·출고수량·처리일시·상태(CONFIRMED → [RELEASE  ]) 항목이 출력된다.

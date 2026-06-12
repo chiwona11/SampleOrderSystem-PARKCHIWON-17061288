@@ -35,23 +35,65 @@ public class OrderController {
         this.view = view;
     }
 
-    /**
-     * 내부 루프를 돌며 "0" 입력 시 반환.
-     * 주문 접수(1), 승인(2), 거절(3), 출고(4) 모두 이 루프 내에서 처리.
-     */
-    public void handle() {
+    public void handlePlace() {
         while (true) {
-            view.showSectionHeader("[2/3] 주문 관리");
-            view.showSubMenu(
-                "[1] 주문 접수", "[2] 주문 승인", "[3] 주문 거절", "[0] 뒤로");
+            view.showSectionHeader("[2] 주문 접수");
+            view.showSubMenu("[1] 주문 접수", "[0] 뒤로");
             String input = view.readLineRaw();
             if ("0".equals(input)) break;
             try {
-                switch (input) {
-                    case "1" -> placeOrder();
-                    case "2" -> approve();
-                    case "3" -> reject();
-                    default  -> view.showError("잘못된 입력입니다.");
+                if ("1".equals(input)) placeOrder();
+                else view.showError("잘못된 입력입니다.");
+            } catch (IllegalArgumentException | IllegalStateException e) {
+                view.showError(e.getMessage());
+            }
+        }
+    }
+
+    public void handleApproveReject() {
+        while (true) {
+            view.showSectionHeader("[3] 주문 승인/거절");
+            List<Order> reserved = orderRepo.findByStatus(OrderStatus.RESERVED);
+            Map<String, String> sampleNameMap = buildSampleNameMap();
+            view.showNumberedOrderList(reserved, sampleNameMap);
+            if (reserved.isEmpty()) break;
+
+            view.showSubMenu("[번호] 선택", "[0] 뒤로");
+            String numInput = view.readLineRaw();
+            if ("0".equals(numInput)) break;
+
+            int idx;
+            try {
+                idx = Integer.parseInt(numInput);
+            } catch (NumberFormatException e) {
+                view.showError("숫자를 입력하세요.");
+                continue;
+            }
+            if (idx < 1 || idx > reserved.size()) {
+                view.showError("올바른 번호를 입력하세요.");
+                continue;
+            }
+            Order target = reserved.get(idx - 1);
+
+            view.showSubMenu("[1] 승인", "[2] 거절", "[0] 뒤로");
+            String action = view.readLineRaw();
+            try {
+                switch (action) {
+                    case "1" -> {
+                        String sampleName = sampleNameMap.getOrDefault(target.getSampleId(), target.getSampleId());
+                        Inventory inv = inventoryRepo.findOrCreate(target.getSampleId());
+                        view.showStockCheckDetail(sampleName, inv.getStock(), target.getQuantity());
+                        boolean ok = view.confirm("  이 주문을 승인하시겠습니까?");
+                        if (ok) view.showOrderStatusChanged(orderService.approve(target.getId()));
+                        else view.showInfo("  승인이 취소되었습니다.");
+                    }
+                    case "2" -> {
+                        boolean ok = view.confirm("  이 주문을 거절하시겠습니까?");
+                        if (ok) view.showOrderStatusChanged(orderService.reject(target.getId()));
+                        else view.showInfo("  거절이 취소되었습니다.");
+                    }
+                    case "0" -> { /* 목록으로 돌아감 */ }
+                    default -> view.showError("잘못된 입력입니다.");
                 }
             } catch (IllegalArgumentException | IllegalStateException e) {
                 view.showError(e.getMessage());
@@ -81,56 +123,6 @@ public class OrderController {
         }
         Order order = orderService.placeOrder(sampleId, customerName, quantity);
         view.showOrderPlacedResult(order);
-    }
-
-    private void approve() {
-        view.showSectionHeader("주문 승인");
-        List<Order> reserved = orderRepo.findByStatus(OrderStatus.RESERVED);
-        Map<String, String> sampleNameMap = buildSampleNameMap();
-        view.showNumberedOrderList(reserved, sampleNameMap);
-        if (reserved.isEmpty()) return;
-
-        int idx = view.readInt("승인할 번호 > ");
-        if (idx < 1 || idx > reserved.size()) {
-            view.showError("올바른 번호를 입력하세요.");
-            return;
-        }
-        Order target = reserved.get(idx - 1);
-
-        String sampleName = sampleNameMap.getOrDefault(target.getSampleId(), target.getSampleId());
-        Inventory inv = inventoryRepo.findOrCreate(target.getSampleId());
-        view.showStockCheckDetail(sampleName, inv.getStock(), target.getQuantity());
-
-        boolean ok = view.confirm("  이 주문을 승인하시겠습니까?");
-        if (!ok) {
-            view.showInfo("  승인이 취소되었습니다.");
-            return;
-        }
-        Order updated = orderService.approve(target.getId());
-        view.showOrderStatusChanged(updated);
-    }
-
-    private void reject() {
-        view.showSectionHeader("주문 거절");
-        List<Order> reserved = orderRepo.findByStatus(OrderStatus.RESERVED);
-        Map<String, String> sampleNameMap = buildSampleNameMap();
-        view.showNumberedOrderList(reserved, sampleNameMap);
-        if (reserved.isEmpty()) return;
-
-        int idx = view.readInt("거절할 번호 > ");
-        if (idx < 1 || idx > reserved.size()) {
-            view.showError("올바른 번호를 입력하세요.");
-            return;
-        }
-        Order target = reserved.get(idx - 1);
-
-        boolean ok = view.confirm("  이 주문을 거절하시겠습니까?");
-        if (!ok) {
-            view.showInfo("  거절이 취소되었습니다.");
-            return;
-        }
-        Order updated = orderService.reject(target.getId());
-        view.showOrderStatusChanged(updated);
     }
 
     public void handleRelease() {

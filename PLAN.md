@@ -1,6 +1,6 @@
 # PLAN.md — 반도체 시료 생산주문관리 시스템
 
-**문서 버전**: 1.5  
+**문서 버전**: 1.7  
 **작성일**: 2026-06-12  
 **프로젝트명**: SampleOrderSystem-PARKCHIWON-17061288
 
@@ -17,7 +17,9 @@
 | 5 | 더미 데이터 | SampleGenerator, OrderGenerator, DummyController | [docs/phase5_plan.md](docs/phase5_plan.md) | ✅ 완료 |
 | 6 | 콘솔 UI 개선 | ConsoleView 전면 개선, Controller 내부 루프화, ANSI 배지 | [docs/phase6_plan.md](docs/phase6_plan.md) | ✅ 완료 |
 | Hotfix-1 | 모니터링 REJECTED 행 제거 | ConsoleView.showOrderCountWithBadge() 뷰 레이어 REJECTED 제외 | — | ✅ 완료 |
-| Hotfix-2 | 메인 메뉴 재구성 | [6] 더미→출고처리, 더미는 숨김 커맨드 `d`로 이동 | — | 🔲 예정 |
+| Hotfix-2 | 메인 메뉴 재구성 | [6] 더미→출고처리, 더미는 숨김 커맨드 `d`로 이동 | — | ✅ 완료 |
+| Hotfix-3 | 주문 메뉴 화면 분기 | [2] 주문 접수 / [3] 주문 승인·거절 화면 완전 분리 | — | ✅ 완료 |
+| Hotfix-4 | 데드코드 제거 | OrderController의 미사용 private approve()/reject() 삭제 | — | 🔲 예정 |
 
 ### 레이어 의존성 흐름
 
@@ -359,9 +361,9 @@ src/main/java/org/example/view/ConsoleView.java   (수정 — showOrderCountWith
 
 ---
 
-## Hotfix-2: 메인 메뉴 재구성 — 출고 처리 분리 🔲
+## Hotfix-2: 메인 메뉴 재구성 — 출고 처리 분리 ✅
 
-> **상태**: 예정
+> **상태**: 완료
 
 ### Hotfix 목표
 
@@ -422,6 +424,100 @@ docs/phase6_plan.md                                        (수정 — Hotfix-2 
 - `./gradlew test` 전체 GREEN 유지 (46개 — release 테스트는 Phase 3에서 이미 포함)
 - `./gradlew build` 에러 없음
 - `docs/phase6_plan.md` 완료 기준 8·9번 문구가 Hotfix-2 변경 사항과 일치
+
+---
+
+---
+
+## Hotfix-3: 주문 메뉴 화면 분기 ✅
+
+> **상태**: 완료
+
+### Hotfix 목표
+
+메인 메뉴 [2]와 [3]이 동일한 `orderCtrl.handle()` 진입점을 공유하여 "[2/3] 주문 관리" 통합 서브메뉴가 표시되는 문제를 수정한다. [2] 주문 접수와 [3] 주문 승인/거절을 완전히 분리된 화면으로 분기하여 UX를 개선한다.
+
+### FR-H3-1 — Main.java 라우팅 분리
+
+- **변경 전**: `case "2", "3" -> orderCtrl.handle()`
+- **변경 후**: `case "2" -> orderCtrl.handlePlace()` / `case "3" -> orderCtrl.handleApproveReject()`
+
+### FR-H3-2 — OrderController.handlePlace() 추가
+
+- 섹션 헤더: `"[2] 주문 접수"`
+- 내부 루프: `placeOrder()` 호출 후 계속 접수 가능, `"0"` 입력 시 메인 복귀
+- 서브메뉴: `[1] 주문 접수   [0] 뒤로`
+
+### FR-H3-3 — OrderController.handleApproveReject() 추가
+
+- 섹션 헤더: `"[3] 주문 승인/거절"`
+- 내부 루프:
+  1. RESERVED 상태 주문 목록 출력 (`showNumberedOrderList`)
+  2. 목록이 없으면 안내 후 복귀
+  3. 번호 입력 (`"0"` 입력 시 메인 복귀)
+  4. 선택된 주문에 대해 `[1] 승인  [2] 거절` 선택
+  5. 처리 결과 출력 후 목록으로 돌아옴
+
+### FR-H3-4 — OrderController.handle() 제거
+
+- 기존 `public void handle()` 메서드는 더 이상 사용되지 않으므로 삭제한다.
+
+### 변경 대상 파일
+
+```
+src/main/java/org/example/Main.java                        (수정 — case "2","3" 분리)
+src/main/java/org/example/controller/OrderController.java  (수정 — handle() 제거, handlePlace()/handleApproveReject() 추가)
+docs/phase6_plan.md                                        (수정 — Hotfix-3 변경 사항 반영)
+```
+
+### 변경 금지 파일
+
+위 3개 파일 외 모든 파일은 수정하지 않는다.
+
+### 완료 기준
+
+- 메인 메뉴 `2` 입력 시 `"[2] 주문 접수"` 헤더와 함께 접수 전용 화면 진입
+- 메인 메뉴 `3` 입력 시 `"[3] 주문 승인/거절"` 헤더와 함께 RESERVED 목록 표시 후 승인/거절 선택
+- `OrderController`에 `handle()` public 메서드 없음
+- `./gradlew test` 전체 GREEN 유지 (46개)
+- `./gradlew build` 에러 없음
+- `docs/phase6_plan.md` 완료 기준 8번 문구가 Hotfix-3 변경 사항과 일치
+
+---
+
+---
+
+## Hotfix-4: 데드코드 제거 🔲
+
+> **상태**: 예정
+
+### Hotfix 목표
+
+Hotfix-3 이후 `OrderController`의 `private void approve()` / `private void reject()` 메서드가 아무 곳에서도 호출되지 않는 데드코드가 되었다. 두 메서드를 삭제한다.
+
+### FR-H4-1 — private approve() / reject() 삭제
+
+- 대상 파일: `src/main/java/org/example/controller/OrderController.java`
+- `private void approve()` 메서드 전체 삭제
+- `private void reject()` 메서드 전체 삭제
+- 그 외 코드는 일절 변경하지 않는다
+
+### 변경 대상 파일
+
+```
+src/main/java/org/example/controller/OrderController.java  (수정 — 미사용 private 메서드 2개 삭제)
+```
+
+### 변경 금지 파일
+
+위 1개 파일 외 모든 파일은 수정하지 않는다.
+
+### 완료 기준
+
+- `OrderController.java`에 `private void approve()` 없음
+- `OrderController.java`에 `private void reject()` 없음
+- `./gradlew test` 전체 GREEN 유지 (46개)
+- `./gradlew build` 에러 없음
 
 ---
 

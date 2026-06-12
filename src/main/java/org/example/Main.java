@@ -68,7 +68,8 @@ public class Main {
             try {
                 switch (input) {
                     case "1" -> sampleCtrl.handle();
-                    case "2", "3" -> orderCtrl.handle();
+                    case "2" -> orderCtrl.handlePlace();
+                    case "3" -> orderCtrl.handleApproveReject();
                     case "4" -> monitorCtrl.handle();
                     case "5" -> productionCtrl.handle();
                     case "6" -> orderCtrl.handleRelease();
