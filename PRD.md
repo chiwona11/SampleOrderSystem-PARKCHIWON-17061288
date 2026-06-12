@@ -1,6 +1,6 @@
 # PRD.md — 반도체 시료 생산주문관리 시스템
 
-**문서 버전**: 1.0  
+**문서 버전**: 1.1  
 **작성일**: 2026-06-12  
 **프로젝트명**: SampleOrderSystem-PARKCHIWON-17061288
 
@@ -37,7 +37,7 @@
 
 | 필드 | 타입 | 설명 |
 |------|------|------|
-| id | String | 시료 고유 식별자 (UUID) |
+| id | String | 시료 고유 식별자 (사용자 입력 임의 문자열) |
 | name | String | 시료 이름 |
 | avgProductionTime | long | 평균 생산시간 (분 단위) |
 | yield | double | 수율 (0.0 ~ 1.0) |
@@ -63,7 +63,21 @@
 | sampleId | String | 시료 ID |
 | stock | int | 현재 재고 수량 |
 
-### 4.4 생산 큐 항목 (ProductionItem)
+### 4.4 재고 상태 (InventoryStatus)
+
+재고 현황 모니터링에서 시료별 재고 상태를 표현하는 Enum이다.
+
+| 값 | 조건 | 설명 |
+|----|------|------|
+| `SUFFICIENT` | `stock >= pendingDemand` | 재고 여유 |
+| `SHORTAGE` | `stock > 0 && stock < pendingDemand` | 재고 부족 |
+| `DEPLETED` | `stock == 0` | 재고 고갈 |
+
+- `pendingDemand` = 해당 시료에 대한 `RESERVED` 상태 주문량 합계 + `PRODUCING` 상태 주문량 합계
+
+---
+
+### 4.5 생산 큐 항목 (ProductionItem)
 
 | 필드 | 타입 | 설명 |
 |------|------|------|
@@ -74,7 +88,7 @@
 | totalProductionTime | long | 총 생산 시간 (분) |
 | enqueuedAt | String | 큐 등록 일시 |
 
-### 4.5 주문 상태 (OrderStatus)
+### 4.6 주문 상태 (OrderStatus)
 
 ```
 RESERVED  → 주문 접수 (초기 상태)
@@ -105,7 +119,7 @@ CONFIRMED ──[출고]───────────→ RELEASE
 - **메서드**: `SampleService.register(String id, String name, long avgProductionTime, double yield)`
 - 입력: 시료 ID, 이름, 평균 생산시간, 수율
 - 중복 ID 등록 시 예외 발생 (`IllegalArgumentException`)
-- 등록된 시료 데이터를 `data/samples.json`에 즉시 저장
+- 등록된 시료 데이터를 프로젝트 루트 `data/samples.json`에 즉시 저장
 
 #### FR-1-2: 시료 목록 조회
 - **메서드**: `SampleService.findAll()`
@@ -123,7 +137,7 @@ CONFIRMED ──[출고]───────────→ RELEASE
 - **메서드**: `OrderService.placeOrder(String sampleId, String customerName, int quantity)`
 - 등록되지 않은 시료 ID 입력 시 예외 발생
 - 주문 생성 시 상태: `RESERVED`
-- 주문 데이터를 `data/orders.json`에 즉시 저장
+- 주문 데이터를 프로젝트 루트 `data/orders.json`에 즉시 저장
 
 #### FR-2-2: 주문 승인
 - **메서드**: `OrderService.approve(String orderId)`
@@ -155,11 +169,12 @@ CONFIRMED ──[출고]───────────→ RELEASE
 
 #### FR-3-2: 시료별 재고 현황 확인
 - **메서드**: `MonitorService.getInventoryStatus()`
-- 시료별 현재 재고 수량 반환
-- 재고 상태 구분:
-  - **여유**: 모든 `RESERVED` + `PRODUCING` 주문량 합계 대비 재고 충분
-  - **부족**: 주문량 합계 대비 재고 부족
-  - **고갈**: 재고 수량 = 0
+- 반환 타입: `Map<String, InventoryStatus>` (sampleId → 상태)
+- 시료별 현재 재고 수량과 `InventoryStatus` 반환
+- 재고 상태 판정 조건 (`pendingDemand` = 해당 시료의 RESERVED 주문량 합 + PRODUCING 주문량 합):
+  - **SUFFICIENT**: `stock >= pendingDemand` (재고 여유)
+  - **SHORTAGE**: `stock > 0 && stock < pendingDemand` (재고 부족)
+  - **DEPLETED**: `stock == 0` (재고 고갈)
 
 ---
 
@@ -184,8 +199,10 @@ CONFIRMED ──[출고]───────────→ RELEASE
 
 #### FR-5-3: 생산 완료 처리
 - **메서드**: `ProductionService.completeProduction(String orderId)`
-- 생산 완료 시 재고 수량 업데이트
+- 생산 완료 시 재고 수량 업데이트: `재고 += actualProduction` (생산된 실 수량을 재고에 추가)
+- 재고 추가 후 해당 주문의 수량(`quantity`)을 재고에서 차감하여 출고 대기 상태로 전환
 - `PRODUCING` → `CONFIRMED` 상태 전이
+- 해당 `ProductionItem`을 생산 큐에서 제거
 
 ---
 
@@ -194,12 +211,12 @@ CONFIRMED ──[출고]───────────→ RELEASE
 #### FR-6-1: 시료 더미 데이터 생성
 - **클래스**: `SampleGenerator`
 - JavaFaker(한국 로케일)를 사용하여 현실적인 시료 데이터 생성
-- 생성된 데이터는 `data/samples.json`에 저장
+- 생성된 데이터는 프로젝트 루트 `data/samples.json`에 저장
 
 #### FR-6-2: 주문 더미 데이터 생성
 - **클래스**: `OrderGenerator`
 - 등록된 시료 ID를 참조하여 주문 데이터 생성
-- 생성된 데이터는 `data/orders.json`에 저장
+- 생성된 데이터는 프로젝트 루트 `data/orders.json`에 저장
 
 ---
 
@@ -207,7 +224,7 @@ CONFIRMED ──[출고]───────────→ RELEASE
 
 ### NFR-1: 데이터 영속성
 - 애플리케이션 재실행 후에도 모든 데이터(시료, 주문, 재고) 유지
-- 파일 경로: `data/samples.json`, `data/orders.json`, `data/inventory.json`
+- 파일 경로: 프로젝트 루트 `data/samples.json`, `data/orders.json`, `data/inventory.json`
 - Jackson ObjectMapper `prettyPrint` 설정으로 가독성 있는 JSON 저장
 
 ### NFR-2: 테스트 커버리지
@@ -274,5 +291,5 @@ CONFIRMED ──[출고]───────────→ RELEASE
 
 - 동시성(멀티스레드) 처리는 이번 버전에서 제외 (단일 스레드 동기 실행)
 - 생산 완료는 수동 처리 (`completeProduction` 명령으로 완료 처리)
-- 주문 ID는 UUID 자동 생성, 시료 ID는 사용자가 직접 입력
+- 주문 ID는 UUID 자동 생성, 시료 ID는 사용자가 직접 입력하는 임의 문자열 (UUID 형식 불필요)
 - `REJECTED` 상태 주문은 조회는 가능하나 모니터링 집계에서 제외

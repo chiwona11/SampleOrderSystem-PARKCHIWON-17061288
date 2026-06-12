@@ -11,7 +11,7 @@
 | 언어 | Java 17 |
 | 빌드 | Gradle (Wrapper 사용) |
 | 직렬화 | Jackson Databind 2.18.x |
-| 테스트 | JUnit Jupiter 6.0.0 |
+| 테스트 | JUnit Jupiter (junit-bom:6.0.0, build.gradle 고정) |
 | 더미 데이터 | JavaFaker (한국 로케일) |
 
 ---
@@ -26,6 +26,8 @@ src/
 │   │   ├── Sample.java                    # 시료 엔티티
 │   │   ├── Order.java                     # 주문 엔티티
 │   │   ├── OrderStatus.java               # 주문 상태 Enum
+│   │   ├── Inventory.java                 # 재고 엔티티
+│   │   ├── InventoryStatus.java           # 재고 상태 Enum (SUFFICIENT/SHORTAGE/DEPLETED)
 │   │   └── ProductionItem.java            # 생산 큐 항목
 │   ├── repository/
 │   │   ├── CrudRepository.java            # 제네릭 CRUD 인터페이스
@@ -41,7 +43,8 @@ src/
 │   │   ├── SampleController.java          # 시료 관리 컨트롤러
 │   │   ├── OrderController.java           # 주문 처리 컨트롤러
 │   │   ├── ProductionController.java      # 생산 라인 컨트롤러
-│   │   └── MonitorController.java         # 모니터링 컨트롤러
+│   │   ├── MonitorController.java         # 모니터링 컨트롤러
+│   │   └── DummyController.java           # 더미 데이터 생성 컨트롤러
 │   ├── view/
 │   │   └── ConsoleView.java               # 단일 콘솔 I/O 담당 뷰
 │   ├── util/
@@ -49,19 +52,21 @@ src/
 │   └── dummy/
 │       ├── SampleGenerator.java           # 시료 더미 데이터 생성기
 │       └── OrderGenerator.java            # 주문 더미 데이터 생성기
-├── main/resources/
-│   └── data/                              # JSON 영속성 파일 저장 경로
-│       ├── samples.json
-│       ├── orders.json
-│       └── inventory.json
 └── test/java/org/example/
     ├── service/
     │   ├── SampleServiceTest.java
     │   ├── OrderServiceTest.java
-    │   └── ProductionServiceTest.java
+    │   ├── ProductionServiceTest.java
+    │   └── MonitorServiceTest.java
     └── repository/
         ├── SampleRepositoryTest.java
-        └── OrderRepositoryTest.java
+        ├── OrderRepositoryTest.java
+        └── InventoryRepositoryTest.java
+
+data/                                      # JSON 영속성 파일 (프로젝트 루트, 런타임 읽기/쓰기)
+├── samples.json
+├── orders.json
+└── inventory.json
 ```
 
 ---
@@ -93,12 +98,15 @@ src/
 - **View**: `System.out` 호출은 `ConsoleView`에서만 허용. 비즈니스 로직 포함 금지.
 - **Controller**: Service/Repository와 View를 연결하는 조정 역할만 수행.
 - **Model**: 불변(immutable) POJO. `final` 필드 + getter 전용.
+  - Jackson 역직렬화를 위해 모든 모델 클래스는 `@JsonCreator` + `@JsonProperty`를 생성자에 적용한다.
+  - 기본 생성자 또는 setter 추가 금지 — `final` 필드 불변성 유지.
 
 ### JSON 영속성 (DataPersistence PoC 준수)
 - `CrudRepository<T, ID>` 제네릭 인터페이스로 추상화.
 - `JsonFileUtil` 통해 파일 I/O 수행 (Jackson ObjectMapper, prettyPrint).
 - 각 저장소는 읽기→수정→쓰기(read-modify-write) 패턴 사용.
 - 애플리케이션 재실행 후에도 데이터 유지.
+- JSON 파일 저장 경로: 프로젝트 루트 `data/` 디렉터리 (classpath 외부, 런타임 읽기/쓰기 가능).
 
 ### 모니터링 레이어 (DataMonitor PoC 준수)
 - 4계층 구조: Model → Repository → Service → UI
@@ -165,7 +173,7 @@ yield = 정상 시료 수량 / 총 생산 수량
 | Spring / Quarkus | 사용 금지 |
 | Mockito | 사용 금지 |
 | System.out | ConsoleView 외부에서 호출 금지 |
-| 데이터 저장 | JSON 파일 방식 (data/ 디렉터리) |
+| 데이터 저장 | JSON 파일 방식 (프로젝트 루트 `data/` 디렉터리) |
 
 ---
 
