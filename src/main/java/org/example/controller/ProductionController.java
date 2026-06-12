@@ -1,7 +1,6 @@
 package org.example.controller;
 
 import org.example.model.Order;
-import org.example.model.OrderStatus;
 import org.example.model.ProductionItem;
 import org.example.model.Sample;
 import org.example.repository.OrderRepository;
@@ -31,65 +30,55 @@ public class ProductionController {
     }
 
     /**
-     * 내부 루프를 돌며 "0" 입력 시 반환.
+     * FIFO 뷰를 출력하고 번호 선택으로 생산 완료 처리. "0" 입력 시 반환. (Hotfix-5)
+     * 큐가 비어있어도 화면을 유지하며 사용자가 "0"을 눌러야 메인으로 복귀한다.
      */
     public void handle() {
         while (true) {
             view.showSectionHeader("[5] 생산 라인");
-            view.showSubMenu(
-                "[1] 생산 중 목록", "[2] 생산라인 조회", "[3] 생산 완료 처리", "[0] 뒤로");
+            List<ProductionItem> queue = productionService.getQueueStatus();
+
+            Map<String, String> sampleNameMap = new HashMap<>();
+            for (Sample s : sampleRepo.findAll()) {
+                sampleNameMap.put(s.getId(), s.getName());
+            }
+            Map<String, Integer> orderQuantityMap = new HashMap<>();
+            for (Order o : orderRepo.findAll()) {
+                orderQuantityMap.put(o.getId(), o.getQuantity());
+            }
+
+            view.showProductionLineView(queue, sampleNameMap, orderQuantityMap);
+
+            if (queue.isEmpty()) {
+                view.showSubMenu("[0] 뒤로");
+                String back = view.readLineRaw();
+                if ("0".equals(back)) break;
+                continue;
+            }
+
+            view.showSubMenu("[번호] 완료 처리", "[0] 뒤로");
             String input = view.readLineRaw();
             if ("0".equals(input)) break;
+
+            int idx;
             try {
-                switch (input) {
-                    case "1" -> listActiveProductions();
-                    case "2" -> showProductionLine();
-                    case "3" -> completeProduction();
-                    default  -> view.showError("잘못된 입력입니다.");
-                }
+                idx = Integer.parseInt(input);
+            } catch (NumberFormatException e) {
+                view.showError("숫자를 입력하세요.");
+                continue;
+            }
+            if (idx < 1 || idx > queue.size()) {
+                view.showError("올바른 번호를 입력하세요.");
+                continue;
+            }
+
+            try {
+                String orderId = queue.get(idx - 1).getOrderId();
+                Order updated = productionService.completeProduction(orderId);
+                view.showOrderStatusChanged(updated);
             } catch (IllegalArgumentException | IllegalStateException e) {
                 view.showError(e.getMessage());
             }
         }
-    }
-
-    private void listActiveProductions() {
-        List<Order> orders = productionService.getActiveProductions();
-        view.showOrderTable(orders);
-    }
-
-    /**
-     * 생산라인 FIFO 뷰 출력 (Image #6 스타일).
-     * sampleNameMap, orderQuantityMap을 조합하여 showProductionLineView 호출.
-     */
-    private void showProductionLine() {
-        List<ProductionItem> queue = productionService.getQueueStatus();
-
-        // 시료명 맵
-        Map<String, String> sampleNameMap = new HashMap<>();
-        for (Sample s : sampleRepo.findAll()) {
-            sampleNameMap.put(s.getId(), s.getName());
-        }
-
-        // 주문 수량 맵 (orderId -> quantity)
-        Map<String, Integer> orderQuantityMap = new HashMap<>();
-        for (Order o : orderRepo.findAll()) {
-            orderQuantityMap.put(o.getId(), o.getQuantity());
-        }
-
-        view.showProductionLineView(queue, sampleNameMap, orderQuantityMap);
-    }
-
-    private void completeProduction() {
-        view.showSectionHeader("생산 완료 처리");
-        List<Order> producing = orderRepo.findByStatus(OrderStatus.PRODUCING);
-        if (producing.isEmpty()) {
-            view.showInfo("  생산 중인 주문이 없습니다.");
-            return;
-        }
-        view.showOrderTable(producing);
-        String orderId = view.readLine("완료 처리할 주문 ID(전체 입력) > ");
-        Order order = productionService.completeProduction(orderId);
-        view.showOrderStatusChanged(order);
     }
 }

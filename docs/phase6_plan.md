@@ -33,6 +33,10 @@
 | `src/main/java/org/example/controller/MonitorController.java` | 수정 |
 | `src/main/java/org/example/controller/DummyController.java` | 수정 |
 | `src/main/java/org/example/Main.java` | 수정 |
+| `src/main/java/org/example/repository/ProductionQueueRepository.java` | 신규 (Hotfix-5) |
+| `src/main/java/org/example/service/OrderService.java` | 수정 (Hotfix-5) |
+| `src/main/java/org/example/service/ProductionService.java` | 수정 (Hotfix-5) |
+| `src/test/java/org/example/repository/ProductionQueueRepositoryTest.java` | 신규 (Hotfix-5) |
 
 ---
 
@@ -371,6 +375,7 @@ public class ConsoleView {
         System.out.printf("  %-15s  %s%n", "상태", "건수");
         System.out.println("  " + "─".repeat(30));
         for (OrderStatus status : OrderStatus.values()) {
+            if (status == OrderStatus.REJECTED) continue;  // Hotfix-1: REJECTED 제외
             long count = countMap.getOrDefault(status, 0L);
             System.out.printf("  %s  %d건%n", badge(status), count);
         }
@@ -780,56 +785,6 @@ public class OrderController {
         view.showOrderPlacedResult(order);
     }
 
-    private void approve() {
-        view.showSectionHeader("주문 승인");
-        List<Order> reserved = orderRepo.findByStatus(OrderStatus.RESERVED);
-        Map<String, String> sampleNameMap = buildSampleNameMap();
-        view.showNumberedOrderList(reserved, sampleNameMap);
-        if (reserved.isEmpty()) return;
-
-        int idx = view.readInt("승인할 번호 > ");
-        if (idx < 1 || idx > reserved.size()) {
-            view.showError("올바른 번호를 입력하세요.");
-            return;
-        }
-        Order target = reserved.get(idx - 1);
-
-        String sampleName = sampleNameMap.getOrDefault(target.getSampleId(), target.getSampleId());
-        Inventory inv = inventoryRepo.findOrCreate(target.getSampleId());
-        view.showStockCheckDetail(sampleName, inv.getStock(), target.getQuantity());
-
-        boolean ok = view.confirm("  이 주문을 승인하시겠습니까?");
-        if (!ok) {
-            view.showInfo("  승인이 취소되었습니다.");
-            return;
-        }
-        Order updated = orderService.approve(target.getId());
-        view.showOrderStatusChanged(updated);
-    }
-
-    private void reject() {
-        view.showSectionHeader("주문 거절");
-        List<Order> reserved = orderRepo.findByStatus(OrderStatus.RESERVED);
-        Map<String, String> sampleNameMap = buildSampleNameMap();
-        view.showNumberedOrderList(reserved, sampleNameMap);
-        if (reserved.isEmpty()) return;
-
-        int idx = view.readInt("거절할 번호 > ");
-        if (idx < 1 || idx > reserved.size()) {
-            view.showError("올바른 번호를 입력하세요.");
-            return;
-        }
-        Order target = reserved.get(idx - 1);
-
-        boolean ok = view.confirm("  이 주문을 거절하시겠습니까?");
-        if (!ok) {
-            view.showInfo("  거절이 취소되었습니다.");
-            return;
-        }
-        Order updated = orderService.reject(target.getId());
-        view.showOrderStatusChanged(updated);
-    }
-
     private void release() {
         view.showSectionHeader("출고 처리");
         List<Order> confirmed = orderRepo.findByStatus(OrderStatus.CONFIRMED);
@@ -867,11 +822,12 @@ public class OrderController {
 
 ### `src/main/java/org/example/controller/ProductionController.java`
 
+> Hotfix-5 반영: 서브메뉴 제거, FIFO 뷰 + 번호 선택 완료 처리 통합 화면
+
 ```java
 package org.example.controller;
 
 import org.example.model.Order;
-import org.example.model.OrderStatus;
 import org.example.model.ProductionItem;
 import org.example.model.Sample;
 import org.example.repository.OrderRepository;
@@ -901,66 +857,56 @@ public class ProductionController {
     }
 
     /**
-     * 내부 루프를 돌며 "0" 입력 시 반환.
+     * FIFO 뷰를 출력하고 번호 선택으로 생산 완료 처리. "0" 입력 시 반환. (Hotfix-5)
+     * 큐가 비어있어도 화면을 유지하며 사용자가 "0"을 눌러야 메인으로 복귀한다.
      */
     public void handle() {
         while (true) {
             view.showSectionHeader("[5] 생산 라인");
-            view.showSubMenu(
-                "[1] 생산 중 목록", "[2] 생산라인 조회", "[3] 생산 완료 처리", "[0] 뒤로");
+            List<ProductionItem> queue = productionService.getQueueStatus();
+
+            Map<String, String> sampleNameMap = new HashMap<>();
+            for (Sample s : sampleRepo.findAll()) {
+                sampleNameMap.put(s.getId(), s.getName());
+            }
+            Map<String, Integer> orderQuantityMap = new HashMap<>();
+            for (Order o : orderRepo.findAll()) {
+                orderQuantityMap.put(o.getId(), o.getQuantity());
+            }
+
+            view.showProductionLineView(queue, sampleNameMap, orderQuantityMap);
+
+            if (queue.isEmpty()) {
+                view.showSubMenu("[0] 뒤로");
+                String back = view.readLineRaw();
+                if ("0".equals(back)) break;
+                continue;
+            }
+
+            view.showSubMenu("[번호] 완료 처리", "[0] 뒤로");
             String input = view.readLineRaw();
             if ("0".equals(input)) break;
+
+            int idx;
             try {
-                switch (input) {
-                    case "1" -> listActiveProductions();
-                    case "2" -> showProductionLine();
-                    case "3" -> completeProduction();
-                    default  -> view.showError("잘못된 입력입니다.");
-                }
+                idx = Integer.parseInt(input);
+            } catch (NumberFormatException e) {
+                view.showError("숫자를 입력하세요.");
+                continue;
+            }
+            if (idx < 1 || idx > queue.size()) {
+                view.showError("올바른 번호를 입력하세요.");
+                continue;
+            }
+
+            try {
+                String orderId = queue.get(idx - 1).getOrderId();
+                Order updated = productionService.completeProduction(orderId);
+                view.showOrderStatusChanged(updated);
             } catch (IllegalArgumentException | IllegalStateException e) {
                 view.showError(e.getMessage());
             }
         }
-    }
-
-    private void listActiveProductions() {
-        List<Order> orders = productionService.getActiveProductions();
-        view.showOrderTable(orders);
-    }
-
-    /**
-     * 생산라인 FIFO 뷰 출력 (Image #6 스타일).
-     * sampleNameMap, orderQuantityMap을 조합하여 showProductionLineView 호출.
-     */
-    private void showProductionLine() {
-        List<ProductionItem> queue = productionService.getQueueStatus();
-
-        // 시료명 맵
-        Map<String, String> sampleNameMap = new HashMap<>();
-        for (Sample s : sampleRepo.findAll()) {
-            sampleNameMap.put(s.getId(), s.getName());
-        }
-
-        // 주문 수량 맵 (orderId -> quantity)
-        Map<String, Integer> orderQuantityMap = new HashMap<>();
-        for (Order o : orderRepo.findAll()) {
-            orderQuantityMap.put(o.getId(), o.getQuantity());
-        }
-
-        view.showProductionLineView(queue, sampleNameMap, orderQuantityMap);
-    }
-
-    private void completeProduction() {
-        view.showSectionHeader("생산 완료 처리");
-        List<Order> producing = orderRepo.findByStatus(OrderStatus.PRODUCING);
-        if (producing.isEmpty()) {
-            view.showInfo("  생산 중인 주문이 없습니다.");
-            return;
-        }
-        view.showOrderTable(producing);
-        String orderId = view.readLine("완료 처리할 주문 ID(전체 입력) > ");
-        Order order = productionService.completeProduction(orderId);
-        view.showOrderStatusChanged(order);
     }
 }
 ```
@@ -1117,9 +1063,9 @@ import org.example.controller.ProductionController;
 import org.example.controller.SampleController;
 import org.example.dummy.OrderGenerator;
 import org.example.dummy.SampleGenerator;
-import org.example.model.ProductionItem;
 import org.example.repository.InventoryRepository;
 import org.example.repository.OrderRepository;
+import org.example.repository.ProductionQueueRepository;
 import org.example.repository.SampleRepository;
 import org.example.service.MonitorService;
 import org.example.service.OrderService;
@@ -1128,8 +1074,6 @@ import org.example.service.SampleService;
 import org.example.view.ConsoleView;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Scanner;
 
 public class Main {
@@ -1137,19 +1081,19 @@ public class Main {
     public static void main(String[] args) {
         new File("data").mkdirs();
 
-        File samplesFile   = new File("data/samples.json");
-        File ordersFile    = new File("data/orders.json");
-        File inventoryFile = new File("data/inventory.json");
+        File samplesFile         = new File("data/samples.json");
+        File ordersFile          = new File("data/orders.json");
+        File inventoryFile       = new File("data/inventory.json");
+        File productionQueueFile = new File("data/production_queue.json");
 
-        SampleRepository    sampleRepo    = new SampleRepository(samplesFile);
-        OrderRepository     orderRepo     = new OrderRepository(ordersFile);
-        InventoryRepository inventoryRepo = new InventoryRepository(inventoryFile);
-
-        List<ProductionItem> productionQueue = new ArrayList<>();
+        SampleRepository          sampleRepo          = new SampleRepository(samplesFile);
+        OrderRepository           orderRepo           = new OrderRepository(ordersFile);
+        InventoryRepository       inventoryRepo       = new InventoryRepository(inventoryFile);
+        ProductionQueueRepository productionQueueRepo = new ProductionQueueRepository(productionQueueFile);
 
         SampleService     sampleService     = new SampleService(sampleRepo, inventoryRepo);
-        OrderService      orderService      = new OrderService(orderRepo, sampleRepo, inventoryRepo, productionQueue);
-        ProductionService productionService = new ProductionService(productionQueue, orderRepo, inventoryRepo);
+        OrderService      orderService      = new OrderService(orderRepo, sampleRepo, inventoryRepo, productionQueueRepo);
+        ProductionService productionService = new ProductionService(productionQueueRepo, orderRepo, inventoryRepo);
         MonitorService    monitorService    = new MonitorService(orderRepo, inventoryRepo, sampleRepo);
 
         ConsoleView view = new ConsoleView(new Scanner(System.in));
@@ -1165,7 +1109,7 @@ public class Main {
         while (true) {
             long sampleCount = sampleRepo.findAll().size();
             long orderCount  = orderRepo.findAll().size();
-            int  queueSize   = productionQueue.size();
+            int  queueSize   = productionQueueRepo.findAll().size();
 
             view.showMainMenu(sampleCount, orderCount, queueSize);
             String input = view.readLineRaw();
@@ -1207,6 +1151,6 @@ public class Main {
 7. 모니터링 재고 현황 테이블에 `█`/`░` 프로그레스 바 컬럼과 시료명 컬럼이 포함된다.
 8. 메인 메뉴 선택 `2` 입력 시 `handlePlace()` — `"[2] 주문 접수"` 헤더와 접수 전용 루프로 진입한다. 선택 `3` 입력 시 `handleApproveReject()` — `"[3] 주문 승인/거절"` 헤더와 RESERVED 목록 → 번호 선택 → 승인/거절 선택 루프로 진입한다. (Hotfix-3)
 9. 출고 처리는 메인 메뉴 `6` 입력 시 `OrderController.handleRelease()`로 진입하며, 더미 데이터는 숨김 커맨드 `d`로 실행한다. (Hotfix-2)
-10. 생산라인 조회([5] → [2]) 시 "생산라인 1개 (단일 라인) 현재 상태: RUNNING/IDLE"이 표시되고, 큐가 있을 경우 첫 항목이 "현재 처리 중" 블록으로, 나머지가 "대기 중인 주문 (FIFO 순)" 테이블로 출력된다. 테이블 하단에 부족분 공식과 FIFO 안내 문구가 표시된다.
+10. `[5] 생산 라인` 진입 시 서브메뉴 없이 FIFO 뷰가 즉시 출력되고, 번호 입력으로 생산 완료 처리가 가능하다. 큐가 비어있을 때는 `[0] 뒤로` 프롬프트를 표시하며 `0` 입력 시에만 메인 복귀한다. 큐는 `data/production_queue.json`으로 영속화되어 앱 재시작 후에도 복원된다. `./gradlew test` 전체 GREEN (기존 46개 + 신규 4개 = 50개). (Hotfix-5)
 11. 출고 처리 완료 시 "출고 처리 완료." 헤더와 함께 주문번호·출고수량·처리일시·상태(CONFIRMED → [RELEASE  ]) 항목이 출력된다.
 12. `./gradlew build` 에러 없이 완료된다.

@@ -1,0 +1,22 @@
+[ {
+  "orderId" : "ORD-007",
+  "sampleId" : "SAM-002",
+  "requiredQuantity" : 30,
+  "actualProduction" : 40,
+  "totalProductionTime" : 7200,
+  "enqueuedAt" : "2026-06-12T11:05:00"
+}, {
+  "orderId" : "ORD-008",
+  "sampleId" : "SAM-005",
+  "requiredQuantity" : 50,
+  "actualProduction" : 70,
+  "totalProductionTime" : 10500,
+  "enqueuedAt" : "2026-06-12T11:35:00"
+}, {
+  "orderId" : "ORD-002",
+  "sampleId" : "SAM-003",
+  "requiredQuantity" : 40,
+  "actualProduction" : 60,
+  "totalProductionTime" : 18000,
+  "enqueuedAt" : "2026-06-12T16:19:03.644587800"
+} ]

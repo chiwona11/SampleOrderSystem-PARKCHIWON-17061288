@@ -423,12 +423,12 @@ public class ConsoleView {
             return;
         }
 
-        // 현재 처리 중 (FIFO 첫 번째 항목)
+        // 현재 처리 중 (FIFO 첫 번째 항목 = 번호 1)
         ProductionItem current = queue.get(0);
         String curSampleName = sampleNameMap.getOrDefault(current.getSampleId(), current.getSampleId());
         int curOrderQty = orderQuantityMap.getOrDefault(current.getOrderId(), current.getRequiredQuantity());
 
-        System.out.println(BOLD + "  현재 처리 중" + RESET);
+        System.out.println(BOLD + "  [1] 현재 처리 중" + RESET);
         System.out.println("  ┌────────────────────────────────────────────────────────────┐");
         System.out.printf("  │  주문번호  %-12s   시료  %-20s    │%n",
                 current.getOrderId().substring(0, Math.min(8, current.getOrderId().length())),
@@ -444,7 +444,7 @@ public class ConsoleView {
                 current.getTotalProductionTime(), current.getEnqueuedAt());
         System.out.println("  └────────────────────────────────────────────────────────────┘");
 
-        // 대기 중인 주문 (나머지)
+        // 대기 중인 주문 (나머지, 번호는 2부터)
         System.out.println();
         System.out.println(BOLD + "  대기 중인 주문 (FIFO 순)" + RESET);
 
@@ -452,7 +452,7 @@ public class ConsoleView {
             System.out.println("  (대기 주문 없음)");
         } else {
             System.out.printf("  %-4s  %-10s  %-20s  %-8s  %-8s  %-8s  %-19s%n",
-                    "순서", "주문번호", "시료", "주문량", "부족분", "실생산량", "큐등록일시");
+                    "번호", "주문번호", "시료", "주문량", "부족분", "실생산량", "큐등록일시");
             System.out.println("  " + "─".repeat(88));
             for (int i = 1; i < queue.size(); i++) {
                 ProductionItem item = queue.get(i);
@@ -461,7 +461,7 @@ public class ConsoleView {
                 String sampleName = sampleNameMap.getOrDefault(item.getSampleId(), item.getSampleId());
                 int orderQty = orderQuantityMap.getOrDefault(item.getOrderId(), item.getRequiredQuantity());
                 System.out.printf("  %-4d  %-10s  %-20s  %-8d  %-8d  %-8d  %-19s%n",
-                        i, shortId, sampleName,
+                        i + 1, shortId, sampleName,
                         orderQty,
                         item.getRequiredQuantity(),
                         item.getActualProduction(),

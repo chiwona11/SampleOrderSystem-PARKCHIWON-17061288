@@ -1,211 +1,92 @@
 [ {
-  "id" : "449c37d6-90bd-46f5-a693-da4c332a0d09",
-  "sampleId" : "S-1781238867241-29",
-  "customerName" : "장 민재",
-  "quantity" : 98,
-  "status" : "RELEASE",
-  "createdAt" : "2026-06-12T13:34:27"
+  "id" : "ORD-001",
+  "sampleId" : "SAM-001",
+  "customerName" : "김철수",
+  "quantity" : 30,
+  "status" : "CONFIRMED",
+  "createdAt" : "2026-06-12T08:00:00"
 }, {
-  "id" : "91b7f166-8692-49b8-960f-a4ee4163f881",
-  "sampleId" : "S-1781238867359-49",
-  "customerName" : "신 서현",
+  "id" : "ORD-002",
+  "sampleId" : "SAM-003",
+  "customerName" : "이영희",
+  "quantity" : 40,
+  "status" : "PRODUCING",
+  "createdAt" : "2026-06-12T08:30:00"
+}, {
+  "id" : "ORD-003",
+  "sampleId" : "SAM-004",
+  "customerName" : "박민준",
+  "quantity" : 20,
+  "status" : "REJECTED",
+  "createdAt" : "2026-06-12T09:00:00"
+}, {
+  "id" : "ORD-004",
+  "sampleId" : "SAM-001",
+  "customerName" : "정수연",
   "quantity" : 50,
   "status" : "RELEASE",
-  "createdAt" : "2026-06-12T13:34:27"
+  "createdAt" : "2026-06-12T09:30:00"
 }, {
-  "id" : "2b5c6a43-f366-4860-b3bf-2f100fafbbe0",
-  "sampleId" : "S-1781238867336-46",
-  "customerName" : "김 은주",
-  "quantity" : 10,
-  "status" : "RELEASE",
-  "createdAt" : "2026-06-12T13:34:27"
+  "id" : "ORD-005",
+  "sampleId" : "SAM-004",
+  "customerName" : "홍길동",
+  "quantity" : 25,
+  "status" : "CONFIRMED",
+  "createdAt" : "2026-06-12T10:00:00"
 }, {
-  "id" : "2c69912f-559d-4454-8c06-dfcca60df07d",
-  "sampleId" : "S-1781238867289-38",
-  "customerName" : "권 현준",
+  "id" : "ORD-006",
+  "sampleId" : "SAM-003",
+  "customerName" : "강지원",
+  "quantity" : 45,
+  "status" : "CONFIRMED",
+  "createdAt" : "2026-06-12T10:30:00"
+}, {
+  "id" : "ORD-007",
+  "sampleId" : "SAM-002",
+  "customerName" : "윤서아",
   "quantity" : 90,
   "status" : "PRODUCING",
-  "createdAt" : "2026-06-12T13:34:27"
+  "createdAt" : "2026-06-12T11:00:00"
 }, {
-  "id" : "ec7a6720-15d4-4117-aae4-8486d1327972",
-  "sampleId" : "S-1781238867113-3",
-  "customerName" : "황 하은",
+  "id" : "ORD-008",
+  "sampleId" : "SAM-005",
+  "customerName" : "임현우",
   "quantity" : 70,
+  "status" : "PRODUCING",
+  "createdAt" : "2026-06-12T11:30:00"
+}, {
+  "id" : "ORD-009",
+  "sampleId" : "SAM-001",
+  "customerName" : "최준혁",
+  "quantity" : 200,
+  "status" : "REJECTED",
+  "createdAt" : "2026-06-12T12:00:00"
+}, {
+  "id" : "ORD-010",
+  "sampleId" : "SAM-006",
+  "customerName" : "김민아",
+  "quantity" : 150,
+  "status" : "REJECTED",
+  "createdAt" : "2026-06-12T12:30:00"
+}, {
+  "id" : "ORD-011",
+  "sampleId" : "SAM-001",
+  "customerName" : "황지훈",
+  "quantity" : 80,
   "status" : "RELEASE",
-  "createdAt" : "2026-06-12T13:34:27"
+  "createdAt" : "2026-06-12T13:00:00"
 }, {
-  "id" : "acf901c9-36c1-4649-b467-537045f2dc3b",
-  "sampleId" : "S-1781238867163-14",
-  "customerName" : "조 서현",
-  "quantity" : 72,
-  "status" : "CONFIRMED",
-  "createdAt" : "2026-06-12T13:34:27"
+  "id" : "ORD-012",
+  "sampleId" : "SAM-004",
+  "customerName" : "송예린",
+  "quantity" : 60,
+  "status" : "RELEASE",
+  "createdAt" : "2026-06-12T13:30:00"
 }, {
-  "id" : "8b54c1e1-da43-46fe-ae51-b368bbbcb888",
-  "sampleId" : "S-1781238867231-27",
-  "customerName" : "장 서윤",
-  "quantity" : 10,
-  "status" : "PRODUCING",
-  "createdAt" : "2026-06-12T13:34:27"
-}, {
-  "id" : "2a625eff-c051-4bfb-8ba2-31dd8ad29467",
-  "sampleId" : "S-1781238867215-24",
-  "customerName" : "정 서연",
-  "quantity" : 66,
-  "status" : "PRODUCING",
-  "createdAt" : "2026-06-12T13:34:27"
-}, {
-  "id" : "28bd545e-3051-46b5-96b7-4f1e52e8e7af",
-  "sampleId" : "S-1781238867359-49",
-  "customerName" : "강 민준",
-  "quantity" : 4,
-  "status" : "PRODUCING",
-  "createdAt" : "2026-06-12T13:34:27"
-}, {
-  "id" : "28c8316a-ced9-4ae0-8a17-e34340057901",
-  "sampleId" : "S-1781238867142-9",
-  "customerName" : "안 서현",
-  "quantity" : 38,
-  "status" : "CONFIRMED",
-  "createdAt" : "2026-06-12T13:34:27"
-}, {
-  "id" : "e90033e1-35d3-4946-8cc7-ea7b04980601",
-  "sampleId" : "S-1781238867331-45",
-  "customerName" : "송 현준",
-  "quantity" : 82,
-  "status" : "REJECTED",
-  "createdAt" : "2026-06-12T13:34:27"
-}, {
-  "id" : "f57dbc3f-b063-44b4-8656-33603ccef1d4",
-  "sampleId" : "S-1781238867123-5",
-  "customerName" : "한 민재",
+  "id" : "ORD-013",
+  "sampleId" : "SAM-006",
+  "customerName" : "박치원",
   "quantity" : 100,
-  "status" : "REJECTED",
-  "createdAt" : "2026-06-12T13:34:27"
-}, {
-  "id" : "64269007-4d95-42e9-9359-6b3aabc18494",
-  "sampleId" : "S-1781238867203-22",
-  "customerName" : "안 지훈",
-  "quantity" : 56,
-  "status" : "REJECTED",
-  "createdAt" : "2026-06-12T13:34:27"
-}, {
-  "id" : "80bedb51-df45-41a1-b251-088f7b5ee266",
-  "sampleId" : "S-1781238867151-11",
-  "customerName" : "정 민서",
-  "quantity" : 86,
-  "status" : "REJECTED",
-  "createdAt" : "2026-06-12T13:34:27"
-}, {
-  "id" : "2bf8c6cd-2dec-4ec4-a3e7-9fbfcb7850f1",
-  "sampleId" : "S-1781238867123-5",
-  "customerName" : "이 민준",
-  "quantity" : 24,
-  "status" : "REJECTED",
-  "createdAt" : "2026-06-12T13:34:27"
-}, {
-  "id" : "4bdb3950-0310-48fd-8096-81673a8e8a32",
-  "sampleId" : "S-1781238867169-15",
-  "customerName" : "정 하은",
-  "quantity" : 44,
-  "status" : "PRODUCING",
-  "createdAt" : "2026-06-12T13:34:27"
-}, {
-  "id" : "4a7d9d76-78ee-41de-afc1-f9275f36ab06",
-  "sampleId" : "S-1781238867320-43",
-  "customerName" : "장 지우",
-  "quantity" : 69,
   "status" : "RESERVED",
-  "createdAt" : "2026-06-12T13:34:27"
-}, {
-  "id" : "98ed0c62-e0cb-494d-b318-5507a26411b0",
-  "sampleId" : "S-1781238867257-32",
-  "customerName" : "조 현준",
-  "quantity" : 81,
-  "status" : "RESERVED",
-  "createdAt" : "2026-06-12T13:34:27"
-}, {
-  "id" : "ec577a9f-b80e-45f2-b771-a873fb073413",
-  "sampleId" : "S-1781238867331-45",
-  "customerName" : "서 지후",
-  "quantity" : 13,
-  "status" : "RESERVED",
-  "createdAt" : "2026-06-12T13:34:27"
-}, {
-  "id" : "af193148-d4a0-4452-bae2-4cc3d7e35d9b",
-  "sampleId" : "S-1781238867215-24",
-  "customerName" : "장 민재",
-  "quantity" : 84,
-  "status" : "RESERVED",
-  "createdAt" : "2026-06-12T13:34:27"
-}, {
-  "id" : "1a37bade-cc9a-4040-98cf-4b0df7ae8bf5",
-  "sampleId" : "S-1781238867251-31",
-  "customerName" : "홍 현준",
-  "quantity" : 82,
-  "status" : "RESERVED",
-  "createdAt" : "2026-06-12T13:34:27"
-}, {
-  "id" : "1cad6a78-ae6a-46f4-af6f-32c953710569",
-  "sampleId" : "S-1781238867183-18",
-  "customerName" : "조 예준",
-  "quantity" : 45,
-  "status" : "RESERVED",
-  "createdAt" : "2026-06-12T13:34:27"
-}, {
-  "id" : "a2cdc1de-6c8b-4117-a738-dc8c5cd3d353",
-  "sampleId" : "S-1781238867134-7",
-  "customerName" : "조 준서",
-  "quantity" : 5,
-  "status" : "RESERVED",
-  "createdAt" : "2026-06-12T13:34:27"
-}, {
-  "id" : "a01e86b5-5fea-4d4c-8c83-54358f4f38df",
-  "sampleId" : "S-1781238867187-19",
-  "customerName" : "오 수빈",
-  "quantity" : 36,
-  "status" : "RESERVED",
-  "createdAt" : "2026-06-12T13:34:27"
-}, {
-  "id" : "d8fa84ab-8b3c-4554-bcec-5892eb6f513d",
-  "sampleId" : "S-1781238867119-4",
-  "customerName" : "황 지우",
-  "quantity" : 98,
-  "status" : "RESERVED",
-  "createdAt" : "2026-06-12T13:34:27"
-}, {
-  "id" : "7fa2cfa5-15f3-4fe1-8e9b-3db32dd735a7",
-  "sampleId" : "S-1781238867296-39",
-  "customerName" : "권 지후",
-  "quantity" : 27,
-  "status" : "RESERVED",
-  "createdAt" : "2026-06-12T13:34:27"
-}, {
-  "id" : "5f7eaf3f-5ded-404d-8e66-fb6e4bae3c6d",
-  "sampleId" : "S-1781238867257-32",
-  "customerName" : "한 우진",
-  "quantity" : 53,
-  "status" : "RESERVED",
-  "createdAt" : "2026-06-12T13:34:27"
-}, {
-  "id" : "5caf474b-8b99-47f0-ae55-fa5021b6a3ae",
-  "sampleId" : "S-1781238867198-21",
-  "customerName" : "김 예은",
-  "quantity" : 21,
-  "status" : "RESERVED",
-  "createdAt" : "2026-06-12T13:34:27"
-}, {
-  "id" : "db273d7d-0eee-44e1-85b3-d320fa83d82d",
-  "sampleId" : "S-1781238867169-15",
-  "customerName" : "임 지민",
-  "quantity" : 42,
-  "status" : "RESERVED",
-  "createdAt" : "2026-06-12T13:34:27"
-}, {
-  "id" : "42b0c6ba-2780-4d26-bca6-91f4aff9deee",
-  "sampleId" : "S-1781238867277-36",
-  "customerName" : "최 윤서",
-  "quantity" : 27,
-  "status" : "RESERVED",
-  "createdAt" : "2026-06-12T13:34:27"
+  "createdAt" : "2026-06-12T16:18:22.739494500"
 } ]

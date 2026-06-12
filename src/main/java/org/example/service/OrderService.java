@@ -7,25 +7,25 @@ import org.example.model.ProductionItem;
 import org.example.model.Sample;
 import org.example.repository.InventoryRepository;
 import org.example.repository.OrderRepository;
+import org.example.repository.ProductionQueueRepository;
 import org.example.repository.SampleRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 
 public class OrderService {
 
     private final OrderRepository orderRepo;
     private final SampleRepository sampleRepo;
     private final InventoryRepository inventoryRepo;
-    private final List<ProductionItem> productionQueue;
+    private final ProductionQueueRepository productionQueueRepo;
 
     public OrderService(OrderRepository orderRepo, SampleRepository sampleRepo,
-                        InventoryRepository inventoryRepo, List<ProductionItem> productionQueue) {
+                        InventoryRepository inventoryRepo, ProductionQueueRepository productionQueueRepo) {
         this.orderRepo = orderRepo;
         this.sampleRepo = sampleRepo;
         this.inventoryRepo = inventoryRepo;
-        this.productionQueue = productionQueue;
+        this.productionQueueRepo = productionQueueRepo;
     }
 
     public Order placeOrder(String sampleId, String customerName, int quantity) {
@@ -36,7 +36,7 @@ public class OrderService {
             throw new IllegalArgumentException("주문 수량은 1 이상이어야 합니다.");
         }
         Order order = new Order(
-                UUID.randomUUID().toString(),
+                nextOrderId(),
                 sampleId,
                 customerName,
                 quantity,
@@ -75,7 +75,7 @@ public class OrderService {
                     totalProductionTime,
                     LocalDateTime.now().toString()
             );
-            productionQueue.add(item);
+            productionQueueRepo.save(item);
             Order producing = order.withStatus(OrderStatus.PRODUCING);
             orderRepo.update(producing);
             return producing;
@@ -106,5 +106,15 @@ public class OrderService {
 
     public List<Order> findAll() {
         return orderRepo.findAll();
+    }
+
+    private String nextOrderId() {
+        int max = orderRepo.findAll().stream()
+                .map(Order::getId)
+                .filter(id -> id.matches("ORD-\\d+"))
+                .mapToInt(id -> Integer.parseInt(id.substring(4)))
+                .max()
+                .orElse(0);
+        return String.format("ORD-%03d", max + 1);
     }
 }

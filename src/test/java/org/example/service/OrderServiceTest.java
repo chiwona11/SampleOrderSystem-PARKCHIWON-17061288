@@ -7,14 +7,13 @@ import org.example.model.ProductionItem;
 import org.example.model.Sample;
 import org.example.repository.InventoryRepository;
 import org.example.repository.OrderRepository;
+import org.example.repository.ProductionQueueRepository;
 import org.example.repository.SampleRepository;
 import org.junit.jupiter.api.*;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -24,10 +23,11 @@ class OrderServiceTest {
     private File tempSamplesFile;
     private File tempOrdersFile;
     private File tempInventoryFile;
+    private File tempQueueFile;
     private SampleRepository sampleRepo;
     private OrderRepository orderRepo;
     private InventoryRepository inventoryRepo;
-    private List<ProductionItem> productionQueue;
+    private ProductionQueueRepository productionQueueRepo;
     private OrderService orderService;
 
     @BeforeEach
@@ -35,11 +35,12 @@ class OrderServiceTest {
         tempSamplesFile   = Files.createTempFile("samples_", ".json").toFile();
         tempOrdersFile    = Files.createTempFile("orders_", ".json").toFile();
         tempInventoryFile = Files.createTempFile("inventory_", ".json").toFile();
-        sampleRepo    = new SampleRepository(tempSamplesFile);
-        orderRepo     = new OrderRepository(tempOrdersFile);
-        inventoryRepo = new InventoryRepository(tempInventoryFile);
-        productionQueue = new ArrayList<>();
-        orderService  = new OrderService(orderRepo, sampleRepo, inventoryRepo, productionQueue);
+        tempQueueFile     = Files.createTempFile("production_queue_", ".json").toFile();
+        sampleRepo          = new SampleRepository(tempSamplesFile);
+        orderRepo           = new OrderRepository(tempOrdersFile);
+        inventoryRepo       = new InventoryRepository(tempInventoryFile);
+        productionQueueRepo = new ProductionQueueRepository(tempQueueFile);
+        orderService        = new OrderService(orderRepo, sampleRepo, inventoryRepo, productionQueueRepo);
     }
 
     @AfterEach
@@ -47,6 +48,7 @@ class OrderServiceTest {
         tempSamplesFile.delete();
         tempOrdersFile.delete();
         tempInventoryFile.delete();
+        tempQueueFile.delete();
     }
 
     private void registerSample(String id, String name, long avgProductionTime, double yield) {
@@ -111,8 +113,8 @@ class OrderServiceTest {
         Order approved = orderService.approve(order.getId());
 
         assertEquals(OrderStatus.PRODUCING, approved.getStatus());
-        assertEquals(1, productionQueue.size());
-        assertEquals(order.getId(), productionQueue.get(0).getOrderId());
+        assertEquals(1, productionQueueRepo.findAll().size());
+        assertEquals(order.getId(), productionQueueRepo.findAll().get(0).getOrderId());
     }
 
     @Test
@@ -125,8 +127,8 @@ class OrderServiceTest {
 
         orderService.approve(order.getId());
 
-        assertEquals(1, productionQueue.size());
-        ProductionItem item = productionQueue.get(0);
+        assertEquals(1, productionQueueRepo.findAll().size());
+        ProductionItem item = productionQueueRepo.findAll().get(0);
         assertEquals(10, item.getRequiredQuantity());
         assertEquals(13, item.getActualProduction());
         assertEquals(60L * 13, item.getTotalProductionTime());

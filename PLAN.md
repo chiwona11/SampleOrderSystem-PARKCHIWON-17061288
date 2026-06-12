@@ -1,6 +1,6 @@
 # PLAN.md — 반도체 시료 생산주문관리 시스템
 
-**문서 버전**: 1.7  
+**문서 버전**: 1.8  
 **작성일**: 2026-06-12  
 **프로젝트명**: SampleOrderSystem-PARKCHIWON-17061288
 
@@ -19,7 +19,10 @@
 | Hotfix-1 | 모니터링 REJECTED 행 제거 | ConsoleView.showOrderCountWithBadge() 뷰 레이어 REJECTED 제외 | — | ✅ 완료 |
 | Hotfix-2 | 메인 메뉴 재구성 | [6] 더미→출고처리, 더미는 숨김 커맨드 `d`로 이동 | — | ✅ 완료 |
 | Hotfix-3 | 주문 메뉴 화면 분기 | [2] 주문 접수 / [3] 주문 승인·거절 화면 완전 분리 | — | ✅ 완료 |
-| Hotfix-4 | 데드코드 제거 | OrderController의 미사용 private approve()/reject() 삭제 | — | 🔲 예정 |
+| Hotfix-4 | 데드코드 제거 | OrderController의 미사용 private approve()/reject() 삭제 | — | ✅ 완료 |
+| Hotfix-5 | 생산 큐 영속화 + 생산라인 UI 통합 | ProductionQueueRepository 신규, 생산라인 단일 화면 전환 | — | ✅ 완료 |
+| Hotfix-6 | 생산라인 번호 매핑 버그 수정 | showProductionLineView()에서 현재처리중=[1], 대기목록=2번부터 일관화 | — | ✅ 완료 |
+| Hotfix-7 | 주문 ID ORD-### 시퀀셜 형식 | placeOrder() UUID → ORD-### 순번 방식으로 변경 | — | ✅ 완료 |
 
 ### 레이어 의존성 흐름
 
@@ -35,11 +38,11 @@ Main
 ├── SampleRepository(samplesFile)
 ├── OrderRepository(ordersFile)
 ├── InventoryRepository(inventoryFile)
-├── List<ProductionItem> productionQueue  ← OrderService, ProductionService 공유
+├── ProductionQueueRepository(productionQueueFile)  ← OrderService, ProductionService 공유 (Hotfix-5)
 │
 ├── SampleService(sampleRepo, inventoryRepo)
-├── OrderService(orderRepo, sampleRepo, inventoryRepo, productionQueue)
-├── ProductionService(productionQueue, orderRepo, inventoryRepo)
+├── OrderService(orderRepo, sampleRepo, inventoryRepo, productionQueueRepo)
+├── ProductionService(productionQueueRepo, orderRepo, inventoryRepo)
 ├── MonitorService(orderRepo, inventoryRepo, sampleRepo)
 │
 ├── ConsoleView(Scanner)
@@ -325,9 +328,9 @@ src/main/java/org/example/Main.java                               (수정)
 
 ---
 
-## Hotfix-1: 모니터링 REJECTED 행 제거 🔲
+## Hotfix-1: 모니터링 REJECTED 행 제거 ✅
 
-> **상태**: 예정
+> **상태**: 완료
 
 ### Hotfix 목표
 
@@ -487,9 +490,9 @@ docs/phase6_plan.md                                        (수정 — Hotfix-3 
 
 ---
 
-## Hotfix-4: 데드코드 제거 🔲
+## Hotfix-4: 데드코드 제거 ✅
 
-> **상태**: 예정
+> **상태**: 완료
 
 ### Hotfix 목표
 
@@ -521,12 +524,161 @@ src/main/java/org/example/controller/OrderController.java  (수정 — 미사용
 
 ---
 
+---
+
+## Hotfix-5: 생산 큐 영속화 + 생산라인 UI 통합 ✅
+
+> **상태**: 완료
+
+### Hotfix 목표
+
+두 가지 문제를 동시에 해결한다.
+
+1. **버그**: `productionQueue`가 인메모리 `List<ProductionItem>`으로만 존재하여 앱 재시작 시 소실됨 → `data/production_queue.json`으로 영속화
+2. **UI**: `[5] 생산 라인`이 `[1]/[2]/[3]` 서브메뉴로 분산 → 이미지처럼 FIFO 뷰 + 번호 선택 완료 처리를 단일 화면으로 통합
+
+### FR-H5-1 — ProductionQueueRepository 신규 구현
+
+- 파일: `src/main/java/org/example/repository/ProductionQueueRepository.java` (신규)
+- `CrudRepository<ProductionItem, String>` 인터페이스 구현 (`String` = orderId)
+- JSON 저장 경로: `data/production_queue.json`
+- 추가 메서드: `findAll()`, `save()`, `deleteById(String orderId)`, `existsById()`
+- `JsonFileUtil`로 읽기/쓰기, read-modify-write 패턴 사용
+
+### FR-H5-2 — Main.java DI 교체
+
+- `List<ProductionItem> productionQueue` 제거
+- `ProductionQueueRepository productionQueueRepo = new ProductionQueueRepository(productionQueueFile)` 추가
+- `data/production_queue.json` 파일 경로 초기화 추가
+- `OrderService`, `ProductionService` 생성자에 `productionQueueRepo` 전달
+
+### FR-H5-3 — OrderService.approve() 수정
+
+- 기존: `productionQueue.add(item)` (인메모리 추가)
+- 변경: `productionQueueRepo.save(item)` (파일 저장)
+- 생성자 파라미터: `List<ProductionItem> productionQueue` → `ProductionQueueRepository productionQueueRepo`
+
+### FR-H5-4 — ProductionService 수정
+
+- 생성자 파라미터: `List<ProductionItem> productionQueue` → `ProductionQueueRepository productionQueueRepo`
+- `getQueueStatus()`: `productionQueueRepo.findAll()` 반환
+- `completeProduction(String orderId)`:
+  - `productionQueueRepo.findById(orderId)`로 조회 (없으면 예외)
+  - 기존 재고 업데이트 + 주문 상태 CONFIRMED 변경 로직 유지
+  - `productionQueueRepo.deleteById(orderId)` 호출로 큐에서 제거
+
+### FR-H5-5 — ProductionController 통합 화면으로 변경
+
+- 서브메뉴(`[1]/[2]/[3]`) 제거
+- `handle()` 내부 루프:
+  1. FIFO 뷰 출력: `showProductionLineView(queue, sampleNameMap, orderQuantityMap)` 호출
+  2. 큐가 비어 있으면 `[0] 뒤로` 프롬프트만 표시하고 사용자가 `0`을 입력해야 메인 복귀 (자동 복귀 금지)
+  3. 큐가 있을 때 프롬프트: `[번호] 완료 처리  [0] 뒤로` — 번호 입력으로 선택
+  4. 선택된 번호에 해당하는 ProductionItem의 orderId로 `productionService.completeProduction()` 호출
+  5. 결과 출력 후 루프 반복
+
+### FR-H5-6 — ProductionQueueRepositoryTest 신규 작성
+
+- 파일: `src/test/java/org/example/repository/ProductionQueueRepositoryTest.java` (신규)
+- 임시 파일 기반 테스트 (`@BeforeEach`/`@AfterEach` 초기화·정리)
+- Mock 사용 금지, `@DisplayName` 한국어 필수
+- 테스트 케이스:
+  - `save_newItem_persistsToFile`: 저장 후 `findAll()`로 복원 검증
+  - `deleteById_existingItem_removesFromFile`: 삭제 후 `findAll()`에서 제거 확인
+  - `findById_existingItem_returnsItem`: 저장된 항목 조회 검증
+  - `findAll_afterRestart_restoresQueue`: 저장 후 새 인스턴스로 재로드 시 데이터 유지 검증
+
+### 변경 대상 파일
+
+```
+src/main/java/org/example/repository/ProductionQueueRepository.java  (신규)
+src/main/java/org/example/Main.java                                   (수정 — DI 교체)
+src/main/java/org/example/service/OrderService.java                   (수정 — approve())
+src/main/java/org/example/service/ProductionService.java              (수정 — Repository 기반)
+src/main/java/org/example/controller/ProductionController.java        (수정 — 통합 화면)
+src/test/java/org/example/repository/ProductionQueueRepositoryTest.java (신규)
+docs/phase6_plan.md                                                   (수정 — Hotfix-5 반영)
+```
+
+### 변경 금지 파일
+
+위 7개 파일 외 모든 파일은 수정하지 않는다.
+
+> **참고**: `CrudRepository<T, ID>` 인터페이스, `JsonFileUtil`, `ProductionItem` 모델은 변경하지 않는다.
+
+### 완료 기준
+
+- 앱 재시작 후 `data/production_queue.json`에서 queue가 복원되어 `[5] 생산 라인` 진입 시 기존 PRODUCING 주문 표시
+- `[5] 생산 라인` 진입 시 서브메뉴 없이 FIFO 뷰 즉시 출력, 번호 선택으로 완료 처리
+- `productionService.completeProduction()` 호출 성공 → 주문 CONFIRMED 전환, 재고 업데이트, queue에서 제거
+- `./gradlew test` 전체 GREEN (기존 46개 + 신규 4개 = 50개)
+- `./gradlew build` 에러 없음
+
+---
+
+---
+
+## Hotfix-6: 생산라인 번호 매핑 버그 수정 ✅
+
+> **상태**: 완료
+
+### Hotfix 목표
+
+`showProductionLineView()`에서 "현재 처리 중" 블록에 번호가 표시되지 않아 "대기 중인 주문" 테이블의 순서 번호(1부터 시작)와 `ProductionController`의 `queue.get(idx-1)` 매핑이 어긋나는 버그를 수정한다.
+
+### FR-H6-1 — showProductionLineView() 번호 일관화
+
+- "현재 처리 중" 헤더를 `"[1] 현재 처리 중"`으로 변경
+- "대기 중인 주문" 테이블의 번호 열을 `i`(1부터) → `i+1`(2부터)로 변경
+- 결과: 사용자가 입력한 번호와 `queue.get(idx-1)` 인덱스가 정확히 일치
+
+### 변경 대상 파일
+
+```
+src/main/java/org/example/view/ConsoleView.java  (수정 — showProductionLineView 번호 표시 수정)
+```
+
+### 완료 기준
+
+- `[5] 생산 라인` 진입 시 첫 번째 항목이 `[1] 현재 처리 중`으로 표시
+- 대기 목록 번호가 2번부터 시작
+- `1` 입력 시 첫 번째 큐 항목, `2` 입력 시 두 번째 큐 항목이 완료 처리됨
+
+---
+
+## Hotfix-7: 주문 ID ORD-### 시퀀셜 형식 ✅
+
+> **상태**: 완료
+
+### Hotfix 목표
+
+`OrderService.placeOrder()`에서 `UUID.randomUUID().toString()`으로 생성하던 주문 ID를 `ORD-###` 시퀀셜 형식으로 변경한다.
+
+### FR-H7-1 — nextOrderId() 메서드 추가
+
+- 기존 `orders.json`에서 `ORD-\\d+` 패턴의 최댓값을 읽어 +1 부여
+- 형식: `String.format("ORD-%03d", max + 1)`
+- 기존 데이터에 ORD-012까지 있으면 다음 주문은 `ORD-013`부터 생성
+
+### 변경 대상 파일
+
+```
+src/main/java/org/example/service/OrderService.java  (수정 — UUID 제거, nextOrderId() 추가)
+```
+
+### 완료 기준
+
+- 신규 주문 접수 시 ID가 `ORD-013`, `ORD-014` 형식으로 생성
+- `./gradlew test` 전체 GREEN (50개) 유지
+
+---
+
 ## 전체 완료 기준 체크리스트
 
 | 항목 | 확인 방법 |
 |------|-----------|
 | `./gradlew build` 성공 | BUILD SUCCESSFUL |
-| `./gradlew test` 전체 GREEN | 7개 테스트 클래스 모두 PASS |
+| `./gradlew test` 전체 GREEN | 8개 테스트 클래스 모두 PASS |
 | JSON 파일 영속성 | 앱 재실행 후 `findAll()` 데이터 유지 확인 |
 | 주문 상태 전이 정확성 | RESERVED→CONFIRMED, RESERVED→PRODUCING→CONFIRMED, CONFIRMED→RELEASE |
 | 생산량 계산식 | `shortage=10, yield=0.9` → `actualProduction=13` |

@@ -6,18 +6,19 @@ import org.example.model.OrderStatus;
 import org.example.model.ProductionItem;
 import org.example.repository.InventoryRepository;
 import org.example.repository.OrderRepository;
+import org.example.repository.ProductionQueueRepository;
 
 import java.util.List;
 
 public class ProductionService {
 
-    private final List<ProductionItem> productionQueue;
+    private final ProductionQueueRepository productionQueueRepo;
     private final OrderRepository orderRepo;
     private final InventoryRepository inventoryRepo;
 
-    public ProductionService(List<ProductionItem> productionQueue,
+    public ProductionService(ProductionQueueRepository productionQueueRepo,
                              OrderRepository orderRepo, InventoryRepository inventoryRepo) {
-        this.productionQueue = productionQueue;
+        this.productionQueueRepo = productionQueueRepo;
         this.orderRepo = orderRepo;
         this.inventoryRepo = inventoryRepo;
     }
@@ -27,13 +28,11 @@ public class ProductionService {
     }
 
     public List<ProductionItem> getQueueStatus() {
-        return List.copyOf(productionQueue);
+        return productionQueueRepo.findAll();
     }
 
     public Order completeProduction(String orderId) {
-        ProductionItem item = productionQueue.stream()
-                .filter(p -> p.getOrderId().equals(orderId))
-                .findFirst()
+        ProductionItem item = productionQueueRepo.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("생산 큐에 등록되지 않은 주문 ID입니다: " + orderId));
 
         Order order = orderRepo.findById(orderId)
@@ -46,7 +45,7 @@ public class ProductionService {
         Order confirmed = order.withStatus(OrderStatus.CONFIRMED);
         orderRepo.update(confirmed);
 
-        productionQueue.remove(item);
+        productionQueueRepo.deleteById(orderId);
         return confirmed;
     }
 }

@@ -33,7 +33,8 @@ src/
 │   │   ├── CrudRepository.java            # 제네릭 CRUD 인터페이스
 │   │   ├── SampleRepository.java          # 시료 저장소 (JSON)
 │   │   ├── OrderRepository.java           # 주문 저장소 (JSON)
-│   │   └── InventoryRepository.java       # 재고 저장소 (JSON)
+│   │   ├── InventoryRepository.java       # 재고 저장소 (JSON)
+│   │   └── ProductionQueueRepository.java # 생산 큐 저장소 (JSON, Hotfix-5)
 │   ├── service/
 │   │   ├── SampleService.java             # 시료 비즈니스 로직
 │   │   ├── OrderService.java              # 주문 비즈니스 로직
@@ -61,12 +62,14 @@ src/
     └── repository/
         ├── SampleRepositoryTest.java
         ├── OrderRepositoryTest.java
-        └── InventoryRepositoryTest.java
+        ├── InventoryRepositoryTest.java
+        └── ProductionQueueRepositoryTest.java  # (Hotfix-5)
 
 data/                                      # JSON 영속성 파일 (프로젝트 루트, 런타임 읽기/쓰기)
 ├── samples.json
 ├── orders.json
-└── inventory.json
+├── inventory.json
+└── production_queue.json                  # 생산 큐 영속화 파일 (Hotfix-5)
 ```
 
 ---

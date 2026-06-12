@@ -7,9 +7,9 @@ import org.example.controller.ProductionController;
 import org.example.controller.SampleController;
 import org.example.dummy.OrderGenerator;
 import org.example.dummy.SampleGenerator;
-import org.example.model.ProductionItem;
 import org.example.repository.InventoryRepository;
 import org.example.repository.OrderRepository;
+import org.example.repository.ProductionQueueRepository;
 import org.example.repository.SampleRepository;
 import org.example.service.MonitorService;
 import org.example.service.OrderService;
@@ -18,8 +18,6 @@ import org.example.service.SampleService;
 import org.example.view.ConsoleView;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Scanner;
 
 public class Main {
@@ -27,19 +25,19 @@ public class Main {
     public static void main(String[] args) {
         new File("data").mkdirs();
 
-        File samplesFile   = new File("data/samples.json");
-        File ordersFile    = new File("data/orders.json");
-        File inventoryFile = new File("data/inventory.json");
+        File samplesFile         = new File("data/samples.json");
+        File ordersFile          = new File("data/orders.json");
+        File inventoryFile       = new File("data/inventory.json");
+        File productionQueueFile = new File("data/production_queue.json");
 
-        SampleRepository    sampleRepo    = new SampleRepository(samplesFile);
-        OrderRepository     orderRepo     = new OrderRepository(ordersFile);
-        InventoryRepository inventoryRepo = new InventoryRepository(inventoryFile);
-
-        List<ProductionItem> productionQueue = new ArrayList<>();
+        SampleRepository          sampleRepo          = new SampleRepository(samplesFile);
+        OrderRepository           orderRepo           = new OrderRepository(ordersFile);
+        InventoryRepository       inventoryRepo       = new InventoryRepository(inventoryFile);
+        ProductionQueueRepository productionQueueRepo = new ProductionQueueRepository(productionQueueFile);
 
         SampleService     sampleService     = new SampleService(sampleRepo, inventoryRepo);
-        OrderService      orderService      = new OrderService(orderRepo, sampleRepo, inventoryRepo, productionQueue);
-        ProductionService productionService = new ProductionService(productionQueue, orderRepo, inventoryRepo);
+        OrderService      orderService      = new OrderService(orderRepo, sampleRepo, inventoryRepo, productionQueueRepo);
+        ProductionService productionService = new ProductionService(productionQueueRepo, orderRepo, inventoryRepo);
         MonitorService    monitorService    = new MonitorService(orderRepo, inventoryRepo, sampleRepo);
 
         ConsoleView view = new ConsoleView(new Scanner(System.in));
@@ -55,7 +53,7 @@ public class Main {
         while (true) {
             long sampleCount = sampleRepo.findAll().size();
             long orderCount  = orderRepo.findAll().size();
-            int  queueSize   = productionQueue.size();
+            int  queueSize   = productionQueueRepo.findAll().size();
 
             view.showMainMenu(sampleCount, orderCount, queueSize);
             String input = view.readLineRaw();
