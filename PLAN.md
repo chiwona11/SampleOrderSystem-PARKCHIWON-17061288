@@ -1,8 +1,52 @@
 # PLAN.md — 반도체 시료 생산주문관리 시스템
 
-**문서 버전**: 1.0  
+**문서 버전**: 1.1  
 **작성일**: 2026-06-12  
 **프로젝트명**: SampleOrderSystem-PARKCHIWON-17061288
+
+---
+
+## 전체 개발 계획 요약
+
+| Phase | 이름 | 핵심 산출물 | 상세 설계 | 상태 |
+|-------|------|-----------|---------|------|
+| 1 | 기반 구조 | 모델 6종, CrudRepository, JsonFileUtil | [docs/phase1_plan.md](docs/phase1_plan.md) | ✅ 완료 |
+| 2 | 저장소 레이어 | SampleRepo, OrderRepo, InventoryRepo + 테스트 17개 | [docs/phase2_plan.md](docs/phase2_plan.md) | ✅ 완료 |
+| 3 | 서비스 레이어 | SampleService, OrderService, ProductionService, MonitorService | docs/phase3_plan.md | ⬜ 미착수 |
+| 4 | 프레젠테이션 | Controller 5종, ConsoleView, Main | docs/phase4_plan.md | ⬜ 미착수 |
+| 5 | 더미 데이터 | SampleGenerator, OrderGenerator, DummyController | docs/phase5_plan.md | ⬜ 미착수 |
+
+### 레이어 의존성 흐름
+
+```
+Main → Controller → Service → Repository → data/*.json
+                 ↘ ConsoleView
+```
+
+### 의존성 주입 구조 (Main 기준)
+
+```
+Main
+├── SampleRepository(samplesFile)
+├── OrderRepository(ordersFile)
+├── InventoryRepository(inventoryFile)
+├── List<ProductionItem> productionQueue  ← OrderService, ProductionService 공유
+│
+├── SampleService(sampleRepo, inventoryRepo)
+├── OrderService(orderRepo, sampleRepo, inventoryRepo, productionQueue)
+├── ProductionService(productionQueue, orderRepo, inventoryRepo)
+├── MonitorService(orderRepo, inventoryRepo, sampleRepo)
+│
+├── ConsoleView(Scanner)
+├── SampleController(sampleService, view)
+├── OrderController(orderService, view)
+├── ProductionController(productionService, view)
+├── MonitorController(monitorService, inventoryRepo, view)
+│
+├── SampleGenerator(sampleRepo, inventoryRepo)
+├── OrderGenerator(orderRepo, sampleRepo)
+└── DummyController(sampleGenerator, orderGenerator, view)
+```
 
 ---
 
@@ -22,11 +66,11 @@
 
 ---
 
-## Phase 1: 기반 구조
+## Phase 1: 기반 구조 ✅
 
-> **상세 설계 정본**: `docs/phase1_plan.md`  
-> 이 섹션의 코드 스니펫은 골격(skeleton) 수준의 참조용이다.  
-> SubAgent2는 반드시 `docs/phase1_plan.md`를 정본으로 사용하여 코드를 생성해야 한다.
+> **상태**: 완료  
+> **상세 설계 정본**: [`docs/phase1_plan.md`](docs/phase1_plan.md)  
+> 구현 명세 및 완전한 코드는 위 문서를 참조한다.
 
 ### Phase 목표
 
@@ -54,245 +98,20 @@ src/main/java/org/example/repository/CrudRepository.java       (생성)
 src/main/java/org/example/util/JsonFileUtil.java               (생성)
 ```
 
-### 구현 상세
-
-#### `build.gradle` 수정
-
-기존 `dependencies` 블록에 두 의존성을 추가한다. `junit-bom:6.0.0` 고정 버전은 변경하지 않는다.
-
-```groovy
-plugins {
-    id 'java'
-    id 'application'
-}
-
-application {
-    mainClass = 'org.example.Main'
-}
-
-dependencies {
-    // 기존 junit 의존성 유지 (변경 금지)
-    testImplementation platform('org.junit:junit-bom:6.0.0')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-
-    // 추가
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.3'
-    implementation 'com.github.javafaker:javafaker:1.0.2'
-}
-```
-
-#### `model/Sample.java`
-
-```java
-package org.example.model;
-
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-
-public final class Sample {
-    private final String id;
-    private final String name;
-    private final long avgProductionTime;   // 분 단위
-    private final double yield;             // 0.0 ~ 1.0
-
-    @JsonCreator
-    public Sample(
-        @JsonProperty("id")                String id,
-        @JsonProperty("name")              String name,
-        @JsonProperty("avgProductionTime") long avgProductionTime,
-        @JsonProperty("yield")             double yield
-    ) { /* 필드 할당 */ }
-
-    // getter: getId(), getName(), getAvgProductionTime(), getYield()
-    // toString(): "Sample{id='...', name='...', avgProductionTime=..., yield=...}"
-}
-```
-
-#### `model/OrderStatus.java`
-
-```java
-package org.example.model;
-
-public enum OrderStatus {
-    RESERVED, REJECTED, PRODUCING, CONFIRMED, RELEASE
-}
-```
-
-#### `model/Order.java`
-
-```java
-package org.example.model;
-
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-
-public final class Order {
-    private final String id;            // UUID 자동 생성
-    private final String sampleId;
-    private final String customerName;
-    private final int quantity;
-    private final OrderStatus status;
-    private final String createdAt;     // ISO-8601 문자열 (LocalDateTime.now().toString())
-
-    @JsonCreator
-    public Order(
-        @JsonProperty("id")           String id,
-        @JsonProperty("sampleId")     String sampleId,
-        @JsonProperty("customerName") String customerName,
-        @JsonProperty("quantity")     int quantity,
-        @JsonProperty("status")       OrderStatus status,
-        @JsonProperty("createdAt")    String createdAt
-    ) { /* 필드 할당 */ }
-
-    // getter 6개
-    // 상태 변경은 새 Order 인스턴스를 반환하는 withStatus(OrderStatus) 제공
-    public Order withStatus(OrderStatus newStatus) {
-        return new Order(id, sampleId, customerName, quantity, newStatus, createdAt);
-    }
-}
-```
-
-#### `model/InventoryStatus.java`
-
-```java
-package org.example.model;
-
-public enum InventoryStatus {
-    SUFFICIENT,   // stock >= pendingDemand
-    SHORTAGE,     // stock > 0 && stock < pendingDemand
-    DEPLETED      // stock == 0
-}
-```
-
-#### `model/Inventory.java`
-
-```java
-package org.example.model;
-
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-
-public final class Inventory {
-    private final String sampleId;
-    private final int stock;
-
-    @JsonCreator
-    public Inventory(
-        @JsonProperty("sampleId") String sampleId,
-        @JsonProperty("stock")    int stock
-    ) { /* 필드 할당 */ }
-
-    // getter: getSampleId(), getStock()
-    // 재고 변경은 새 인스턴스 반환
-    public Inventory withStock(int newStock) {
-        return new Inventory(sampleId, newStock);
-    }
-}
-```
-
-#### `model/ProductionItem.java`
-
-```java
-package org.example.model;
-
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-
-public final class ProductionItem {
-    private final String orderId;
-    private final String sampleId;
-    private final int requiredQuantity;       // shortage (부족 수량)
-    private final int actualProduction;       // ceil(shortage / (yield * 0.9))
-    private final long totalProductionTime;   // avgProductionTime * actualProduction (분)
-    private final String enqueuedAt;          // ISO-8601 문자열
-
-    @JsonCreator
-    public ProductionItem(
-        @JsonProperty("orderId")             String orderId,
-        @JsonProperty("sampleId")            String sampleId,
-        @JsonProperty("requiredQuantity")    int requiredQuantity,
-        @JsonProperty("actualProduction")    int actualProduction,
-        @JsonProperty("totalProductionTime") long totalProductionTime,
-        @JsonProperty("enqueuedAt")          String enqueuedAt
-    ) { /* 필드 할당 */ }
-
-    // getter 6개
-}
-```
-
-#### `repository/CrudRepository.java`
-
-```java
-package org.example.repository;
-
-import java.util.List;
-import java.util.Optional;
-
-public interface CrudRepository<T, ID> {
-    void save(T entity);               // 신규 엔티티 추가 후 파일 즉시 저장
-    Optional<T> findById(ID id);
-    List<T> findAll();
-    void update(T entity);             // 기존 엔티티 교체 후 파일 즉시 저장
-    void deleteById(ID id);            // 해당 ID 엔티티 제거 후 파일 즉시 저장
-}
-```
-
-#### `util/JsonFileUtil.java`
-
-```java
-package org.example.util;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
-public class JsonFileUtil {
-    private static final ObjectMapper MAPPER = new ObjectMapper()
-        .enable(SerializationFeature.INDENT_OUTPUT);
-
-    // 파일이 없거나 비어있으면 빈 리스트 반환. IOException → RuntimeException 래핑 전파
-    public static <T> List<T> readList(File file, Class<T> clazz) {
-        if (!file.exists() || file.length() == 0) return new ArrayList<>();
-        try {
-            return MAPPER.readValue(file,
-                MAPPER.getTypeFactory().constructCollectionType(List.class, clazz));
-        } catch (IOException e) {
-            throw new RuntimeException("JSON 파일 읽기 실패: " + file.getPath(), e);
-        }
-    }
-
-    // 부모 디렉터리(data/) 없으면 자동 생성 후 prettyPrint 저장. IOException → RuntimeException 래핑 전파
-    public static <T> void writeList(File file, List<T> list) {
-        if (file.getParentFile() != null) file.getParentFile().mkdirs();
-        try {
-            MAPPER.writeValue(file, list);
-        } catch (IOException e) {
-            throw new RuntimeException("JSON 파일 쓰기 실패: " + file.getPath(), e);
-        }
-    }
-}
-```
-
-### 제약 조건
-
-- `build.gradle`의 JUnit bom 버전(`junit-bom:6.0.0`) 변경 금지
-- `settings.gradle`, `gradlew`, `gradlew.bat`, `.gitignore` 수정 금지
-- 모델 클래스에 setter·기본 생성자 추가 금지
-
 ### 완료 기준
 
 - `./gradlew compileJava` 에러 없이 완료
 - 9개 파일(모델 6개 + CrudRepository + JsonFileUtil + build.gradle 수정)이 모두 존재
 - `Sample`, `Order`, `Inventory`, `ProductionItem` 인스턴스를 Jackson으로 직렬화/역직렬화했을 때 동일 필드값이 복원된다
-- `./gradlew build` 에러 없이 완료 (Phase 1에는 테스트 클래스 없으므로 테스트 단계 SKIP 허용)
+- `./gradlew build` 에러 없이 완료
 
 ---
 
-## Phase 2: 저장소 레이어
+## Phase 2: 저장소 레이어 ✅
+
+> **상태**: 완료  
+> **상세 설계 정본**: [`docs/phase2_plan.md`](docs/phase2_plan.md)  
+> 구현 명세 및 완전한 코드는 위 문서를 참조한다.
 
 ### Phase 목표
 
@@ -318,190 +137,12 @@ src/test/java/org/example/repository/OrderRepositoryTest.java      (생성)
 src/test/java/org/example/repository/InventoryRepositoryTest.java  (생성)
 ```
 
-### 구현 상세
-
-#### `repository/SampleRepository.java`
-
-```java
-package org.example.repository;
-
-import org.example.model.Sample;
-import org.example.util.JsonFileUtil;
-import java.io.File;
-import java.util.List;
-import java.util.Optional;
-
-public class SampleRepository implements CrudRepository<Sample, String> {
-    private final File file;  // 생성자 주입 — 테스트에서 임시 파일 사용 가능
-
-    public SampleRepository(File file) { this.file = file; }
-
-    @Override public void save(Sample entity) { /* readList → add → writeList */ }
-    @Override public Optional<Sample> findById(String id) { /* stream findFirst */ }
-    @Override public List<Sample> findAll() { /* readList */ }
-    @Override public void update(Sample entity) { /* readList → replaceIf id 일치 → writeList */ }
-    @Override public void deleteById(String id) { /* readList → removeIf → writeList */ }
-
-    public boolean existsById(String id) { return findById(id).isPresent(); }
-}
-```
-
-모든 메서드는 **read-modify-write** 패턴 적용 (파일에서 읽기 → 메모리 수정 → 파일 쓰기).
-
-#### `repository/OrderRepository.java`
-
-```java
-package org.example.repository;
-
-import org.example.model.Order;
-import org.example.model.OrderStatus;
-import java.io.File;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
-public class OrderRepository implements CrudRepository<Order, String> {
-    private final File file;
-
-    public OrderRepository(File file) { this.file = file; }
-
-    @Override public void save(Order entity) { ... }
-    @Override public Optional<Order> findById(String id) { ... }
-    @Override public List<Order> findAll() { ... }
-    @Override public void update(Order entity) { /* id 기준 교체 */ }
-    @Override public void deleteById(String id) { ... }
-
-    public List<Order> findByStatus(OrderStatus status) {
-        return findAll().stream()
-            .filter(o -> o.getStatus() == status)
-            .collect(Collectors.toList());
-    }
-
-    public List<Order> findBySampleId(String sampleId) {
-        return findAll().stream()
-            .filter(o -> o.getSampleId().equals(sampleId))
-            .collect(Collectors.toList());
-    }
-}
-```
-
-#### `repository/InventoryRepository.java`
-
-```java
-package org.example.repository;
-
-import org.example.model.Inventory;
-import java.io.File;
-import java.util.List;
-import java.util.Optional;
-
-public class InventoryRepository implements CrudRepository<Inventory, String> {
-    private final File file;  // data/inventory.json
-
-    public InventoryRepository(File file) { this.file = file; }
-
-    @Override public void save(Inventory entity) { ... }
-    @Override public Optional<Inventory> findById(String sampleId) { ... }
-    @Override public List<Inventory> findAll() { ... }
-    @Override public void update(Inventory entity) { /* sampleId 기준 교체 */ }
-    @Override public void deleteById(String sampleId) { ... }
-
-    // 재고가 없는 시료에 대해 stock=0으로 자동 생성
-    public Inventory findOrCreate(String sampleId) {
-        return findById(sampleId).orElseGet(() -> {
-            Inventory inv = new Inventory(sampleId, 0);
-            save(inv);
-            return inv;
-        });
-    }
-}
-```
-
-#### 테스트 파일
-
-**`SampleRepositoryTest.java`**
-
-```java
-@DisplayName("SampleRepository 테스트")
-class SampleRepositoryTest {
-    private File tempFile;
-    private SampleRepository repo;
-
-    @BeforeEach void setUp() throws IOException {
-        tempFile = Files.createTempFile("samples", ".json").toFile();
-        repo = new SampleRepository(tempFile);
-    }
-    @AfterEach void tearDown() { tempFile.delete(); }
-
-    @Test @DisplayName("save_새로운시료_파일에저장됨")
-    void save_newSample_savedToFile() { ... }
-
-    @Test @DisplayName("findById_존재하는ID_시료반환")
-    void findById_existingId_returnsSample() { ... }
-
-    @Test @DisplayName("findById_존재하지않는ID_빈Optional반환")
-    void findById_nonExistingId_returnsEmpty() { ... }
-
-    @Test @DisplayName("findAll_여러시료저장후_전체목록반환")
-    void findAll_multipleSamples_returnsAll() { ... }
-
-    @Test @DisplayName("update_기존시료수정_변경사항반영됨")
-    void update_existingSample_updatesFile() { ... }
-
-    @Test @DisplayName("deleteById_존재하는ID_삭제됨")
-    void deleteById_existingId_removed() { ... }
-
-    @Test @DisplayName("existsById_저장된시료ID_true반환")
-    void existsById_savedId_returnsTrue() { ... }
-}
-```
-
-**`OrderRepositoryTest.java`**
-
-```java
-@DisplayName("OrderRepository 테스트")
-class OrderRepositoryTest {
-    @Test @DisplayName("save_주문저장_파일에기록됨")
-    void save_order_savedToFile() { ... }
-
-    @Test @DisplayName("findByStatus_RESERVED상태_해당주문만반환")
-    void findByStatus_reserved_returnsOnlyReservedOrders() { ... }
-
-    @Test @DisplayName("findBySampleId_특정시료ID_해당주문목록반환")
-    void findBySampleId_specificId_returnsMatchingOrders() { ... }
-
-    @Test @DisplayName("update_상태변경후업데이트_변경된상태반환")
-    void update_statusChanged_updatedStatusReflected() { ... }
-}
-```
-
-**`InventoryRepositoryTest.java`**
-
-```java
-@DisplayName("InventoryRepository 테스트")
-class InventoryRepositoryTest {
-    @Test @DisplayName("findOrCreate_존재하지않는시료_재고0으로생성")
-    void findOrCreate_nonExistingSampleId_createsWithZeroStock() { ... }
-
-    @Test @DisplayName("findOrCreate_이미존재하는시료_기존재고반환")
-    void findOrCreate_existingSampleId_returnsExistingInventory() { ... }
-
-    @Test @DisplayName("update_재고변경후업데이트_변경된재고반환")
-    void update_stockChanged_updatedStockReflected() { ... }
-}
-```
-
-### 제약 조건
-
-- 테스트에서 `data/` 실제 경로 사용 금지 — `Files.createTempFile()`로 격리된 임시 파일 사용
-- `@AfterEach`에서 임시 파일 반드시 삭제
-- Mockito 사용 금지
-
 ### 완료 기준
 
-- `./gradlew test --tests "org.example.repository.*"` GREEN
+- `./gradlew test --tests "org.example.repository.*"` GREEN (17개 테스트 모두 통과 — SampleRepositoryTest 8, OrderRepositoryTest 5, InventoryRepositoryTest 4)
 - 3개 저장소 모두 `CrudRepository<T, ID>` 인터페이스 완전 구현
 - 재실행 후 `findAll()` 호출로 데이터 복원 확인 가능
+- `SampleRepository.existsById()`, `OrderRepository.findByStatus()`, `OrderRepository.findBySampleId()`, `InventoryRepository.findOrCreate()` 추가 메서드 동작 검증
 
 ---
 
@@ -547,13 +188,6 @@ src/test/java/org/example/service/MonitorServiceTest.java         (생성)
 #### `service/SampleService.java`
 
 ```java
-package org.example.service;
-
-import org.example.model.Sample;
-import org.example.repository.InventoryRepository;
-import org.example.repository.SampleRepository;
-import java.util.List;
-
 public class SampleService {
     private final SampleRepository sampleRepo;
     private final InventoryRepository inventoryRepo;
@@ -580,14 +214,6 @@ public class SampleService {
 #### `service/OrderService.java`
 
 ```java
-package org.example.service;
-
-import org.example.model.*;
-import org.example.repository.*;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
-
 public class OrderService {
     private final OrderRepository orderRepo;
     private final SampleRepository sampleRepo;
@@ -631,12 +257,6 @@ public class OrderService {
 #### `service/ProductionService.java`
 
 ```java
-package org.example.service;
-
-import org.example.model.*;
-import org.example.repository.*;
-import java.util.List;
-
 public class ProductionService {
     private final List<ProductionItem> productionQueue;  // OrderService와 공유 참조
     private final OrderRepository orderRepo;
@@ -669,13 +289,6 @@ public class ProductionService {
 #### `service/MonitorService.java`
 
 ```java
-package org.example.service;
-
-import org.example.model.*;
-import org.example.repository.*;
-import java.util.*;
-import java.util.stream.Collectors;
-
 public class MonitorService {
     private final OrderRepository orderRepo;
     private final InventoryRepository inventoryRepo;
@@ -849,11 +462,6 @@ src/main/java/org/example/Main.java                               (생성)
 모든 `System.out.println` / `System.out.print` 호출은 이 클래스에서만 허용.
 
 ```java
-package org.example.view;
-
-import org.example.model.*;
-import java.util.*;
-
 public class ConsoleView {
     private final Scanner scanner;
 
@@ -875,26 +483,11 @@ public class ConsoleView {
     public void showInfo(String message) { System.out.println(message); }
 
     // 테이블 출력 메서드 (컬럼 구분: | 로 정렬)
-    public void showSampleTable(List<Sample> samples) {
-        // 컬럼: ID | 이름 | 평균생산시간(분) | 수율
-    }
-
-    public void showOrderTable(List<Order> orders) {
-        // 컬럼: 주문ID | 시료ID | 고객명 | 수량 | 상태 | 접수일시
-    }
-
-    public void showInventoryStatusTable(Map<String, InventoryStatus> statusMap,
-                                          List<Inventory> inventories) {
-        // 컬럼: 시료ID | 재고 | 상태
-    }
-
-    public void showOrderCountTable(Map<OrderStatus, Long> countMap) {
-        // 컬럼: 상태 | 건수
-    }
-
-    public void showProductionQueueTable(List<ProductionItem> queue) {
-        // 컬럼: 주문ID | 시료ID | 필요수량 | 실생산량 | 총생산시간(분) | 큐등록일시
-    }
+    public void showSampleTable(List<Sample> samples) { /* 컬럼: ID | 이름 | 평균생산시간(분) | 수율 */ }
+    public void showOrderTable(List<Order> orders) { /* 컬럼: 주문ID | 시료ID | 고객명 | 수량 | 상태 | 접수일시 */ }
+    public void showInventoryStatusTable(Map<String, InventoryStatus> statusMap, List<Inventory> inventories) { /* 컬럼: 시료ID | 재고 | 상태 */ }
+    public void showOrderCountTable(Map<OrderStatus, Long> countMap) { /* 컬럼: 상태 | 건수 */ }
+    public void showProductionQueueTable(List<ProductionItem> queue) { /* 컬럼: 주문ID | 시료ID | 필요수량 | 실생산량 | 총생산시간(분) | 큐등록일시 */ }
 }
 ```
 
@@ -902,9 +495,6 @@ public class ConsoleView {
 
 ```java
 public class SampleController {
-    private final SampleService sampleService;
-    private final ConsoleView view;
-
     // handle("1") → register()   : id, name, avgProductionTime, yield 입력 → register()
     // handle("2") → listAll()    : findAll() → showSampleTable()
     // handle("3") → search()     : keyword 입력 → search() → showSampleTable()
@@ -917,9 +507,6 @@ public class SampleController {
 
 ```java
 public class OrderController {
-    private final OrderService orderService;
-    private final ConsoleView view;
-
     // handle("1") → placeOrder() : sampleId, customerName, quantity 입력
     // handle("2") → approve()    : orderId 입력 → approve()
     // handle("3") → reject()     : orderId 입력 → reject()
@@ -932,9 +519,6 @@ public class OrderController {
 
 ```java
 public class ProductionController {
-    private final ProductionService productionService;
-    private final ConsoleView view;
-
     // handle("1") → getActiveProductions() → showOrderTable()
     // handle("2") → getQueueStatus() → showProductionQueueTable()
     // handle("3") → orderId 입력 → completeProduction()
@@ -946,10 +530,6 @@ public class ProductionController {
 
 ```java
 public class MonitorController {
-    private final MonitorService monitorService;
-    private final InventoryRepository inventoryRepo;
-    private final ConsoleView view;
-
     // handle("1") → getOrderCountByStatus() → showOrderCountTable()
     // handle("2") → getInventoryStatus() + inventoryRepo.findAll() → showInventoryStatusTable()
     public void handle(String subMenu) { ... }
@@ -964,13 +544,8 @@ public class DummyController {
 
     public DummyController(ConsoleView view) { this.view = view; }
 
-    public void generateSamples() {
-        view.showInfo("더미 시료 데이터 생성 기능은 Phase 5에서 구현됩니다.");
-    }
-
-    public void generateOrders() {
-        view.showInfo("더미 주문 데이터 생성 기능은 Phase 5에서 구현됩니다.");
-    }
+    public void generateSamples() { view.showInfo("더미 시료 데이터 생성 기능은 Phase 5에서 구현됩니다."); }
+    public void generateOrders()  { view.showInfo("더미 주문 데이터 생성 기능은 Phase 5에서 구현됩니다."); }
 
     public void handle(String subMenu) {
         switch (subMenu) {
@@ -985,40 +560,23 @@ public class DummyController {
 #### `Main.java`
 
 ```java
-package org.example;
-
-import org.example.model.ProductionItem;
-import org.example.repository.*;
-import org.example.service.*;
-import org.example.controller.*;
-import org.example.view.ConsoleView;
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Scanner;
-
 public class Main {
     public static void main(String[] args) {
-        // 1. JSON 파일
         File samplesFile   = new File("data/samples.json");
         File ordersFile    = new File("data/orders.json");
         File inventoryFile = new File("data/inventory.json");
 
-        // 2. Repository
         SampleRepository    sampleRepo    = new SampleRepository(samplesFile);
         OrderRepository     orderRepo     = new OrderRepository(ordersFile);
         InventoryRepository inventoryRepo = new InventoryRepository(inventoryFile);
 
-        // 3. 공유 생산 큐 (OrderService와 ProductionService가 동일 참조 사용)
         List<ProductionItem> productionQueue = new ArrayList<>();
 
-        // 4. Service
         SampleService     sampleService     = new SampleService(sampleRepo, inventoryRepo);
         OrderService      orderService      = new OrderService(orderRepo, sampleRepo, inventoryRepo, productionQueue);
         ProductionService productionService = new ProductionService(productionQueue, orderRepo, inventoryRepo);
         MonitorService    monitorService    = new MonitorService(orderRepo, inventoryRepo, sampleRepo);
 
-        // 5. View / Controller
         ConsoleView view = new ConsoleView(new Scanner(System.in));
         SampleController     sampleCtrl     = new SampleController(sampleService, view);
         OrderController      orderCtrl      = new OrderController(orderService, view);
@@ -1026,7 +584,6 @@ public class Main {
         MonitorController    monitorCtrl    = new MonitorController(monitorService, inventoryRepo, view);
         DummyController      dummyCtrl      = new DummyController(view);
 
-        // 6. 메인 루프
         while (true) {
             view.showMainMenu();
             String mainMenu = view.readLine("메뉴 선택: ");
@@ -1092,24 +649,7 @@ src/main/java/org/example/Main.java                               (수정 — Du
 #### `dummy/SampleGenerator.java`
 
 ```java
-package org.example.dummy;
-
-import com.github.javafaker.Faker;
-import org.example.model.Sample;
-import org.example.repository.SampleRepository;
-import org.example.repository.InventoryRepository;
-import java.util.Locale;
-import java.util.Random;
-
 public class SampleGenerator {
-    private final SampleRepository sampleRepo;
-    private final InventoryRepository inventoryRepo;
-    private final Faker faker = new Faker(new Locale("ko"));
-    private final Random random = new Random();
-
-    public SampleGenerator(SampleRepository sampleRepo, InventoryRepository inventoryRepo) { ... }
-
-    // count 개의 시료 생성 후 저장
     // id: "S-" + System.currentTimeMillis() + "-" + i (중복 방지)
     // name: faker.commerce().productName() + " 시료"
     // avgProductionTime: 10 ~ 480 (분)
@@ -1122,45 +662,12 @@ public class SampleGenerator {
 #### `dummy/OrderGenerator.java`
 
 ```java
-package org.example.dummy;
-
-import com.github.javafaker.Faker;
-import org.example.model.Order;
-import org.example.model.OrderStatus;
-import org.example.repository.OrderRepository;
-import org.example.repository.SampleRepository;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Locale;
-import java.util.Random;
-import java.util.UUID;
-
 public class OrderGenerator {
-    private final OrderRepository orderRepo;
-    private final SampleRepository sampleRepo;
-    private final Faker faker = new Faker(new Locale("ko"));
-    private final Random random = new Random();
-
-    public OrderGenerator(OrderRepository orderRepo, SampleRepository sampleRepo) { ... }
-
-    // count 개의 주문 생성 후 저장
     // 시료 없으면 IllegalStateException("시료 데이터가 없습니다. 먼저 시료 더미 데이터를 생성하세요.")
     // sampleId: 기존 시료 목록에서 랜덤 선택
     // customerName: faker.name().fullName()
-    // quantity: 1 ~ 100
-    // status: RESERVED
-    public void generate(int count) {
-        List<String> sampleIds = sampleRepo.findAll().stream().map(s -> s.getId()).toList();
-        if (sampleIds.isEmpty())
-            throw new IllegalStateException("시료 데이터가 없습니다. 먼저 시료 더미 데이터를 생성하세요.");
-        for (int i = 0; i < count; i++) {
-            String sampleId = sampleIds.get(random.nextInt(sampleIds.size()));
-            Order order = new Order(UUID.randomUUID().toString(), sampleId,
-                faker.name().fullName(), 1 + random.nextInt(100),
-                OrderStatus.RESERVED, LocalDateTime.now().toString());
-            orderRepo.save(order);
-        }
-    }
+    // quantity: 1 ~ 100 / status: RESERVED
+    public void generate(int count) { ... }
 }
 ```
 
@@ -1171,9 +678,6 @@ public class DummyController {
     private final SampleGenerator sampleGenerator;
     private final OrderGenerator  orderGenerator;
     private final ConsoleView view;
-
-    public DummyController(SampleGenerator sampleGenerator, OrderGenerator orderGenerator,
-                           ConsoleView view) { ... }
 
     // 메뉴 6-1: 생성 개수 입력 → sampleGenerator.generate(count)
     public void generateSamples() { ... }
@@ -1228,30 +732,3 @@ DummyController dummyCtrl = new DummyController(sampleGenerator, orderGenerator,
 | REJECTED 모니터링 제외 | `getOrderCountByStatus()` 결과에 REJECTED 없음 |
 | System.out ConsoleView 독점 | grep으로 ConsoleView 외 System.out 없음 확인 |
 | Mock 사용 금지 | build.gradle에 mockito 없음 확인 |
-
----
-
-## 의존성 주입 다이어그램 (Main 기준)
-
-```
-Main
-├── SampleRepository(samplesFile)
-├── OrderRepository(ordersFile)
-├── InventoryRepository(inventoryFile)
-├── List<ProductionItem> productionQueue  ← OrderService, ProductionService 공유
-│
-├── SampleService(sampleRepo, inventoryRepo)
-├── OrderService(orderRepo, sampleRepo, inventoryRepo, productionQueue)
-├── ProductionService(productionQueue, orderRepo, inventoryRepo)
-├── MonitorService(orderRepo, inventoryRepo, sampleRepo)
-│
-├── ConsoleView(Scanner)
-├── SampleController(sampleService, view)
-├── OrderController(orderService, view)
-├── ProductionController(productionService, view)
-├── MonitorController(monitorService, inventoryRepo, view)
-│
-├── SampleGenerator(sampleRepo, inventoryRepo)
-├── OrderGenerator(orderRepo, sampleRepo)
-└── DummyController(sampleGenerator, orderGenerator, view)
-```
