@@ -24,6 +24,10 @@
 
 ## Phase 1: 기반 구조
 
+> **상세 설계 정본**: `docs/phase1_plan.md`  
+> 이 섹션의 코드 스니펫은 골격(skeleton) 수준의 참조용이다.  
+> SubAgent2는 반드시 `docs/phase1_plan.md`를 정본으로 사용하여 코드를 생성해야 한다.
+
 ### Phase 목표
 
 프로젝트가 컴파일 가능한 상태가 되도록 의존성을 추가하고, 도메인 모델 클래스·CRUD 인터페이스·JSON 유틸리티를 구현한다.
@@ -250,22 +254,28 @@ public class JsonFileUtil {
     private static final ObjectMapper MAPPER = new ObjectMapper()
         .enable(SerializationFeature.INDENT_OUTPUT);
 
-    // 파일이 없거나 비어있으면 빈 리스트 반환
-    public static <T> List<T> readList(File file, Class<T> clazz) throws IOException {
+    // 파일이 없거나 비어있으면 빈 리스트 반환. IOException → RuntimeException 래핑 전파
+    public static <T> List<T> readList(File file, Class<T> clazz) {
         if (!file.exists() || file.length() == 0) return new ArrayList<>();
-        return MAPPER.readValue(file,
-            MAPPER.getTypeFactory().constructCollectionType(List.class, clazz));
+        try {
+            return MAPPER.readValue(file,
+                MAPPER.getTypeFactory().constructCollectionType(List.class, clazz));
+        } catch (IOException e) {
+            throw new RuntimeException("JSON 파일 읽기 실패: " + file.getPath(), e);
+        }
     }
 
-    // 부모 디렉터리(data/) 없으면 자동 생성 후 prettyPrint 저장
-    public static <T> void writeList(File file, List<T> list) throws IOException {
-        file.getParentFile().mkdirs();
-        MAPPER.writeValue(file, list);
+    // 부모 디렉터리(data/) 없으면 자동 생성 후 prettyPrint 저장. IOException → RuntimeException 래핑 전파
+    public static <T> void writeList(File file, List<T> list) {
+        if (file.getParentFile() != null) file.getParentFile().mkdirs();
+        try {
+            MAPPER.writeValue(file, list);
+        } catch (IOException e) {
+            throw new RuntimeException("JSON 파일 쓰기 실패: " + file.getPath(), e);
+        }
     }
 }
 ```
-
-- IOException은 RuntimeException으로 래핑하여 전파 허용
 
 ### 제약 조건
 
@@ -276,7 +286,9 @@ public class JsonFileUtil {
 ### 완료 기준
 
 - `./gradlew compileJava` 에러 없이 완료
-- 6개 모델 클래스, `CrudRepository` 인터페이스, `JsonFileUtil` 모두 컴파일 성공
+- 9개 파일(모델 6개 + CrudRepository + JsonFileUtil + build.gradle 수정)이 모두 존재
+- `Sample`, `Order`, `Inventory`, `ProductionItem` 인스턴스를 Jackson으로 직렬화/역직렬화했을 때 동일 필드값이 복원된다
+- `./gradlew build` 에러 없이 완료 (Phase 1에는 테스트 클래스 없으므로 테스트 단계 SKIP 허용)
 
 ---
 
