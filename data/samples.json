@@ -1,0 +1,251 @@
+[ {
+  "id" : "S-1781238866893-0",
+  "name" : "에피택셜 웨이퍼 12인치",
+  "avgProductionTime" : 310,
+  "yield" : 0.95
+}, {
+  "id" : "S-1781238867077-1",
+  "name" : "폴리실리콘 웨이퍼 12인치",
+  "avgProductionTime" : 160,
+  "yield" : 0.96
+}, {
+  "id" : "S-1781238867109-2",
+  "name" : "NPW 12인치",
+  "avgProductionTime" : 320,
+  "yield" : 0.73
+}, {
+  "id" : "S-1781238867113-3",
+  "name" : "모니터 웨이퍼 8인치",
+  "avgProductionTime" : 360,
+  "yield" : 0.7
+}, {
+  "id" : "S-1781238867119-4",
+  "name" : "실리콘 웨이퍼 8인치",
+  "avgProductionTime" : 160,
+  "yield" : 0.83
+}, {
+  "id" : "S-1781238867123-5",
+  "name" : "에피택셜 웨이퍼 12인치",
+  "avgProductionTime" : 330,
+  "yield" : 0.81
+}, {
+  "id" : "S-1781238867128-6",
+  "name" : "실리콘 웨이퍼 8인치",
+  "avgProductionTime" : 300,
+  "yield" : 0.74
+}, {
+  "id" : "S-1781238867134-7",
+  "name" : "에피택셜 웨이퍼 12인치",
+  "avgProductionTime" : 50,
+  "yield" : 0.83
+}, {
+  "id" : "S-1781238867138-8",
+  "name" : "에피택셜 웨이퍼 12인치",
+  "avgProductionTime" : 200,
+  "yield" : 0.82
+}, {
+  "id" : "S-1781238867142-9",
+  "name" : "SOI 웨이퍼 12인치",
+  "avgProductionTime" : 390,
+  "yield" : 0.83
+}, {
+  "id" : "S-1781238867146-10",
+  "name" : "NPW 12인치",
+  "avgProductionTime" : 270,
+  "yield" : 0.93
+}, {
+  "id" : "S-1781238867151-11",
+  "name" : "NPW 12인치",
+  "avgProductionTime" : 170,
+  "yield" : 0.73
+}, {
+  "id" : "S-1781238867156-12",
+  "name" : "NPW 12인치",
+  "avgProductionTime" : 390,
+  "yield" : 0.72
+}, {
+  "id" : "S-1781238867159-13",
+  "name" : "테스트 웨이퍼 12인치",
+  "avgProductionTime" : 410,
+  "yield" : 0.87
+}, {
+  "id" : "S-1781238867163-14",
+  "name" : "NPW 8인치",
+  "avgProductionTime" : 340,
+  "yield" : 0.96
+}, {
+  "id" : "S-1781238867169-15",
+  "name" : "모니터 웨이퍼 8인치",
+  "avgProductionTime" : 310,
+  "yield" : 0.71
+}, {
+  "id" : "S-1781238867174-16",
+  "name" : "실리콘 웨이퍼 8인치",
+  "avgProductionTime" : 240,
+  "yield" : 0.87
+}, {
+  "id" : "S-1781238867179-17",
+  "name" : "NPW 12인치",
+  "avgProductionTime" : 220,
+  "yield" : 0.8
+}, {
+  "id" : "S-1781238867183-18",
+  "name" : "에피택셜 웨이퍼 12인치",
+  "avgProductionTime" : 310,
+  "yield" : 0.89
+}, {
+  "id" : "S-1781238867187-19",
+  "name" : "폴리실리콘 웨이퍼 12인치",
+  "avgProductionTime" : 400,
+  "yield" : 0.88
+}, {
+  "id" : "S-1781238867192-20",
+  "name" : "NPW 8인치",
+  "avgProductionTime" : 10,
+  "yield" : 0.82
+}, {
+  "id" : "S-1781238867198-21",
+  "name" : "테스트 웨이퍼 12인치",
+  "avgProductionTime" : 150,
+  "yield" : 0.83
+}, {
+  "id" : "S-1781238867203-22",
+  "name" : "에피택셜 웨이퍼 12인치",
+  "avgProductionTime" : 200,
+  "yield" : 0.95
+}, {
+  "id" : "S-1781238867209-23",
+  "name" : "테스트 웨이퍼 12인치",
+  "avgProductionTime" : 250,
+  "yield" : 0.8
+}, {
+  "id" : "S-1781238867215-24",
+  "name" : "더미 웨이퍼 12인치",
+  "avgProductionTime" : 330,
+  "yield" : 0.9
+}, {
+  "id" : "S-1781238867221-25",
+  "name" : "NPW 8인치",
+  "avgProductionTime" : 60,
+  "yield" : 0.73
+}, {
+  "id" : "S-1781238867226-26",
+  "name" : "모니터 웨이퍼 8인치",
+  "avgProductionTime" : 30,
+  "yield" : 0.96
+}, {
+  "id" : "S-1781238867231-27",
+  "name" : "더미 웨이퍼 12인치",
+  "avgProductionTime" : 270,
+  "yield" : 0.78
+}, {
+  "id" : "S-1781238867237-28",
+  "name" : "모니터 웨이퍼 8인치",
+  "avgProductionTime" : 90,
+  "yield" : 0.96
+}, {
+  "id" : "S-1781238867241-29",
+  "name" : "실리콘 웨이퍼 8인치",
+  "avgProductionTime" : 400,
+  "yield" : 0.97
+}, {
+  "id" : "S-1781238867246-30",
+  "name" : "에피택셜 웨이퍼 12인치",
+  "avgProductionTime" : 40,
+  "yield" : 0.72
+}, {
+  "id" : "S-1781238867251-31",
+  "name" : "더미 웨이퍼 12인치",
+  "avgProductionTime" : 410,
+  "yield" : 0.83
+}, {
+  "id" : "S-1781238867257-32",
+  "name" : "더미 웨이퍼 12인치",
+  "avgProductionTime" : 360,
+  "yield" : 0.74
+}, {
+  "id" : "S-1781238867261-33",
+  "name" : "NPW 12인치",
+  "avgProductionTime" : 140,
+  "yield" : 0.84
+}, {
+  "id" : "S-1781238867266-34",
+  "name" : "실리콘 웨이퍼 8인치",
+  "avgProductionTime" : 360,
+  "yield" : 0.79
+}, {
+  "id" : "S-1781238867272-35",
+  "name" : "테스트 웨이퍼 12인치",
+  "avgProductionTime" : 350,
+  "yield" : 0.77
+}, {
+  "id" : "S-1781238867277-36",
+  "name" : "테스트 웨이퍼 12인치",
+  "avgProductionTime" : 250,
+  "yield" : 0.8
+}, {
+  "id" : "S-1781238867284-37",
+  "name" : "더미 웨이퍼 12인치",
+  "avgProductionTime" : 20,
+  "yield" : 0.88
+}, {
+  "id" : "S-1781238867289-38",
+  "name" : "NPW 12인치",
+  "avgProductionTime" : 360,
+  "yield" : 0.78
+}, {
+  "id" : "S-1781238867296-39",
+  "name" : "더미 웨이퍼 12인치",
+  "avgProductionTime" : 260,
+  "yield" : 0.91
+}, {
+  "id" : "S-1781238867301-40",
+  "name" : "실리콘 웨이퍼 8인치",
+  "avgProductionTime" : 220,
+  "yield" : 0.81
+}, {
+  "id" : "S-1781238867307-41",
+  "name" : "SOI 웨이퍼 12인치",
+  "avgProductionTime" : 410,
+  "yield" : 0.78
+}, {
+  "id" : "S-1781238867314-42",
+  "name" : "모니터 웨이퍼 8인치",
+  "avgProductionTime" : 250,
+  "yield" : 0.91
+}, {
+  "id" : "S-1781238867320-43",
+  "name" : "NPW 8인치",
+  "avgProductionTime" : 420,
+  "yield" : 0.77
+}, {
+  "id" : "S-1781238867325-44",
+  "name" : "모니터 웨이퍼 8인치",
+  "avgProductionTime" : 230,
+  "yield" : 0.74
+}, {
+  "id" : "S-1781238867331-45",
+  "name" : "폴리실리콘 웨이퍼 12인치",
+  "avgProductionTime" : 170,
+  "yield" : 0.79
+}, {
+  "id" : "S-1781238867336-46",
+  "name" : "NPW 12인치",
+  "avgProductionTime" : 130,
+  "yield" : 0.84
+}, {
+  "id" : "S-1781238867344-47",
+  "name" : "테스트 웨이퍼 12인치",
+  "avgProductionTime" : 110,
+  "yield" : 0.96
+}, {
+  "id" : "S-1781238867352-48",
+  "name" : "NPW 8인치",
+  "avgProductionTime" : 80,
+  "yield" : 0.74
+}, {
+  "id" : "S-1781238867359-49",
+  "name" : "폴리실리콘 웨이퍼 12인치",
+  "avgProductionTime" : 140,
+  "yield" : 0.89
+} ]

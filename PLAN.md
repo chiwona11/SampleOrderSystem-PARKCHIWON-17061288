@@ -1,6 +1,6 @@
 # PLAN.md — 반도체 시료 생산주문관리 시스템
 
-**문서 버전**: 1.2  
+**문서 버전**: 1.3  
 **작성일**: 2026-06-12  
 **프로젝트명**: SampleOrderSystem-PARKCHIWON-17061288
 
@@ -15,6 +15,7 @@
 | 3 | 서비스 레이어 | SampleService, OrderService, ProductionService, MonitorService + 테스트 23개 | [docs/phase3_plan.md](docs/phase3_plan.md) | ✅ 완료 |
 | 4 | 프레젠테이션 | Controller 5종, ConsoleView, Main | [docs/phase4_plan.md](docs/phase4_plan.md) | ✅ 완료 |
 | 5 | 더미 데이터 | SampleGenerator, OrderGenerator, DummyController | [docs/phase5_plan.md](docs/phase5_plan.md) | ✅ 완료 |
+| 6 | 콘솔 UI 개선 | ConsoleView 전면 개선, Controller 내부 루프화, ANSI 배지 | [docs/phase6_plan.md](docs/phase6_plan.md) | 🔲 예정 |
 
 ### 레이어 의존성 흐름
 
@@ -38,10 +39,10 @@ Main
 ├── MonitorService(orderRepo, inventoryRepo, sampleRepo)
 │
 ├── ConsoleView(Scanner)
-├── SampleController(sampleService, view)
-├── OrderController(orderService, view)
-├── ProductionController(productionService, view)
-├── MonitorController(monitorService, inventoryRepo, view)
+├── SampleController(sampleService, inventoryRepo, view)
+├── OrderController(orderService, orderRepo, sampleRepo, inventoryRepo, view)
+├── ProductionController(productionService, orderRepo, sampleRepo, view)
+├── MonitorController(monitorService, inventoryRepo, sampleRepo, view)
 │
 ├── SampleGenerator(sampleRepo, inventoryRepo)
 ├── OrderGenerator(orderRepo, sampleRepo)
@@ -279,6 +280,42 @@ src/main/java/org/example/Main.java                               (수정 — Du
 - 메뉴 6-2 실행 → `data/orders.json`에 faker 주문 데이터 추가 확인
 - 시료 없이 주문 생성 시 에러 메시지 출력 후 메뉴로 복귀 확인
 - `./gradlew build` 에러 없음 / `./gradlew test` 전체 GREEN
+
+---
+
+## Phase 6: 콘솔 UI 개선 🔲
+
+> **상태**: 예정  
+> **상세 설계 정본**: [`docs/phase6_plan.md`](docs/phase6_plan.md)  
+> 구현 명세 및 완전한 코드는 위 문서를 참조한다.
+
+### Phase 목표
+
+콘솔 UI를 전면 개선하여 가독성과 운영 편의성을 높인다.
+- ASCII 아트 배너 + 시스템 현황 요약 (시료 N종 | 주문 N건 | 생산대기 N건)
+- 각 Controller가 내부 루프를 갖도록 변경 (서브메뉴 선택을 Controller 내부에서 처리, "0" 입력 시 메인 복귀)
+- 테이블 출력 개선: 박스 테두리 제거, 헤더 구분선 적용
+- ANSI 색상 코드 기반 상태 배지 (RESERVED/CONFIRMED/PRODUCING/REJECTED/RELEASE)
+- 재고 현황 테이블에 프로그레스 바 (`█`/`░`) 추가
+- 주문 승인 플로우 개선: 번호 선택 방식, 재고 확인 상세 출력
+- 주문 접수 플로우 개선: 확인 요약 + Y/N 프롬프트
+- 출고 처리를 OrderController 내부로 통합 (Main에서 별도 분기 제거)
+
+### 변경 대상 파일 목록
+
+```
+src/main/java/org/example/view/ConsoleView.java                   (수정)
+src/main/java/org/example/controller/SampleController.java        (수정)
+src/main/java/org/example/controller/OrderController.java         (수정)
+src/main/java/org/example/controller/ProductionController.java    (수정)
+src/main/java/org/example/controller/MonitorController.java       (수정)
+src/main/java/org/example/controller/DummyController.java         (수정)
+src/main/java/org/example/Main.java                               (수정)
+```
+
+### 구현 상세
+
+> 상세 구현 코드는 [`docs/phase6_plan.md`](docs/phase6_plan.md)를 참조한다.
 
 ---
 
