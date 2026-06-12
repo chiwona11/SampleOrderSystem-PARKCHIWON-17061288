@@ -1,6 +1,6 @@
 # PLAN.md — 반도체 시료 생산주문관리 시스템
 
-**문서 버전**: 1.1  
+**문서 버전**: 1.2  
 **작성일**: 2026-06-12  
 **프로젝트명**: SampleOrderSystem-PARKCHIWON-17061288
 
@@ -12,7 +12,7 @@
 |-------|------|-----------|---------|------|
 | 1 | 기반 구조 | 모델 6종, CrudRepository, JsonFileUtil | [docs/phase1_plan.md](docs/phase1_plan.md) | ✅ 완료 |
 | 2 | 저장소 레이어 | SampleRepo, OrderRepo, InventoryRepo + 테스트 17개 | [docs/phase2_plan.md](docs/phase2_plan.md) | ✅ 완료 |
-| 3 | 서비스 레이어 | SampleService, OrderService, ProductionService, MonitorService | docs/phase3_plan.md | ⬜ 미착수 |
+| 3 | 서비스 레이어 | SampleService, OrderService, ProductionService, MonitorService + 테스트 23개 | [docs/phase3_plan.md](docs/phase3_plan.md) | ✅ 완료 |
 | 4 | 프레젠테이션 | Controller 5종, ConsoleView, Main | docs/phase4_plan.md | ⬜ 미착수 |
 | 5 | 더미 데이터 | SampleGenerator, OrderGenerator, DummyController | docs/phase5_plan.md | ⬜ 미착수 |
 
@@ -146,7 +146,11 @@ src/test/java/org/example/repository/InventoryRepositoryTest.java  (생성)
 
 ---
 
-## Phase 3: 서비스 레이어
+## Phase 3: 서비스 레이어 ✅
+
+> **상태**: 완료  
+> **상세 설계 정본**: [`docs/phase3_plan.md`](docs/phase3_plan.md)  
+> 구현 명세 및 완전한 코드는 위 문서를 참조한다.
 
 ### Phase 목표
 
@@ -185,247 +189,14 @@ src/test/java/org/example/service/MonitorServiceTest.java         (생성)
 
 ### 구현 상세
 
-#### `service/SampleService.java`
-
-```java
-public class SampleService {
-    private final SampleRepository sampleRepo;
-    private final InventoryRepository inventoryRepo;
-
-    public SampleService(SampleRepository sampleRepo, InventoryRepository inventoryRepo) { ... }
-
-    // FR-1-1: 중복 ID → IllegalArgumentException("이미 존재하는 시료 ID입니다: " + id)
-    // 등록 성공 시 Inventory stock=0으로 초기화
-    public Sample register(String id, String name, long avgProductionTime, double yield) { ... }
-
-    // FR-1-2
-    public List<Sample> findAll() { return sampleRepo.findAll(); }
-
-    // FR-1-3: keyword null/blank → 전체 목록 반환
-    public List<Sample> search(String keyword) {
-        if (keyword == null || keyword.isBlank()) return findAll();
-        return sampleRepo.findAll().stream()
-            .filter(s -> s.getName().toLowerCase().contains(keyword.toLowerCase()))
-            .toList();
-    }
-}
-```
-
-#### `service/OrderService.java`
-
-```java
-public class OrderService {
-    private final OrderRepository orderRepo;
-    private final SampleRepository sampleRepo;
-    private final InventoryRepository inventoryRepo;
-    private final List<ProductionItem> productionQueue;  // Main에서 주입, ProductionService와 공유
-
-    public OrderService(OrderRepository orderRepo, SampleRepository sampleRepo,
-                        InventoryRepository inventoryRepo, List<ProductionItem> productionQueue) { ... }
-
-    // FR-2-1: sampleId 미존재 → IllegalArgumentException
-    //         quantity <= 0 → IllegalArgumentException
-    //         생성 상태: RESERVED
-    public Order placeOrder(String sampleId, String customerName, int quantity) { ... }
-
-    // FR-2-2: RESERVED가 아니면 IllegalStateException
-    //   재고 충분(stock >= quantity):
-    //     inventory.stock -= quantity → inventoryRepo.update()
-    //     order.status → CONFIRMED
-    //   재고 부족(stock < quantity):
-    //     shortage = quantity - stock
-    //     actualProduction = (int) Math.ceil(shortage / (sample.getYield() * 0.9))
-    //     totalProductionTime = sample.getAvgProductionTime() * actualProduction
-    //     ProductionItem 생성 → productionQueue.add()
-    //     order.status → PRODUCING
-    public Order approve(String orderId) { ... }
-
-    // FR-2-3: RESERVED가 아니면 IllegalStateException
-    public Order reject(String orderId) { ... }
-
-    // FR-4-1: CONFIRMED가 아니면 IllegalStateException
-    public Order release(String orderId) { ... }
-
-    public List<Order> findAll() { return orderRepo.findAll(); }
-}
-```
-
-> **설계 결정**: `ProductionItem` 목록은 런타임 `List<ProductionItem>`으로 관리한다.  
-> `Main`에서 `new ArrayList<>()`를 생성하여 `OrderService`와 `ProductionService` 양쪽에 동일 참조를 주입한다.  
-> 단일 스레드 환경에 적합하며 구현 단순성을 유지한다 (재실행 시 생산 큐는 초기화됨).
-
-#### `service/ProductionService.java`
-
-```java
-public class ProductionService {
-    private final List<ProductionItem> productionQueue;  // OrderService와 공유 참조
-    private final OrderRepository orderRepo;
-    private final InventoryRepository inventoryRepo;
-
-    public ProductionService(List<ProductionItem> productionQueue,
-                             OrderRepository orderRepo, InventoryRepository inventoryRepo) { ... }
-
-    // FR-5-1: PRODUCING 상태 주문 목록
-    public List<Order> getActiveProductions() {
-        return orderRepo.findByStatus(OrderStatus.PRODUCING);
-    }
-
-    // FR-5-2: FIFO 순서 (List 삽입 순서 = 큐 등록 순서)
-    public List<ProductionItem> getQueueStatus() {
-        return List.copyOf(productionQueue);
-    }
-
-    // FR-5-3:
-    //   1. productionQueue에서 orderId 일치 항목 검색 (없으면 IllegalArgumentException)
-    //   2. inventory.stock += item.actualProduction
-    //   3. inventory.stock -= order.quantity (출고 대기를 위한 수량 차감)
-    //   4. inventoryRepo.update() (Math.max(0, newStock) 적용)
-    //   5. order.status → CONFIRMED, orderRepo.update()
-    //   6. productionQueue에서 해당 item 제거
-    public Order completeProduction(String orderId) { ... }
-}
-```
-
-#### `service/MonitorService.java`
-
-```java
-public class MonitorService {
-    private final OrderRepository orderRepo;
-    private final InventoryRepository inventoryRepo;
-    private final SampleRepository sampleRepo;
-
-    public MonitorService(OrderRepository orderRepo, InventoryRepository inventoryRepo,
-                          SampleRepository sampleRepo) { ... }
-
-    // FR-3-1: REJECTED 제외, Map<OrderStatus, Long> 반환
-    public Map<OrderStatus, Long> getOrderCountByStatus() {
-        return orderRepo.findAll().stream()
-            .filter(o -> o.getStatus() != OrderStatus.REJECTED)
-            .collect(Collectors.groupingBy(Order::getStatus, Collectors.counting()));
-    }
-
-    // FR-3-2: Map<String(sampleId), InventoryStatus> 반환
-    // pendingDemand = 해당 시료의 RESERVED 주문량 합 + PRODUCING 주문량 합
-    // DEPLETED 우선 판정 (stock == 0, pendingDemand 무관)
-    // SHORTAGE: stock > 0 && stock < pendingDemand
-    // SUFFICIENT: stock >= pendingDemand
-    public Map<String, InventoryStatus> getInventoryStatus() { ... }
-}
-```
-
-#### 테스트 파일
-
-**`SampleServiceTest.java`**
-
-```java
-@DisplayName("SampleService 테스트")
-class SampleServiceTest {
-    @Test @DisplayName("register_새로운시료_저장소에추가됨")
-    void register_newSample_addedToRepository() { ... }
-
-    @Test @DisplayName("register_중복ID_IllegalArgumentException발생")
-    void register_duplicateId_throwsIllegalArgumentException() { ... }
-
-    @Test @DisplayName("register_시료등록시_재고0으로초기화됨")
-    void register_newSample_inventoryInitializedWithZero() { ... }
-
-    @Test @DisplayName("search_부분문자열_일치하는시료반환")
-    void search_partialKeyword_returnsMatchingSamples() { ... }
-
-    @Test @DisplayName("search_대소문자무시_일치하는시료반환")
-    void search_caseInsensitive_returnsMatchingSamples() { ... }
-
-    @Test @DisplayName("search_빈키워드_전체목록반환")
-    void search_emptyKeyword_returnsAllSamples() { ... }
-}
-```
-
-**`OrderServiceTest.java`**
-
-```java
-@DisplayName("OrderService 테스트")
-class OrderServiceTest {
-    @Test @DisplayName("placeOrder_유효한시료ID_RESERVED상태주문생성")
-    void placeOrder_validSampleId_createsReservedOrder() { ... }
-
-    @Test @DisplayName("placeOrder_존재하지않는시료ID_예외발생")
-    void placeOrder_invalidSampleId_throwsException() { ... }
-
-    @Test @DisplayName("approve_재고충분_CONFIRMED상태로전환")
-    void approve_sufficientStock_setsConfirmed() { ... }
-
-    @Test @DisplayName("approve_재고부족_PRODUCING상태로전환및생산큐등록")
-    void approve_insufficientStock_setsProducingAndEnqueuesItem() { ... }
-
-    @Test @DisplayName("approve_재고부족_생산량계산식검증")
-    void approve_insufficientStock_calculatesActualProductionCorrectly() {
-        // shortage=10, yield=0.9 → actualProduction = ceil(10 / (0.9*0.9)) = ceil(12.34) = 13
-    }
-
-    @Test @DisplayName("approve_RESERVED아닌상태_예외발생")
-    void approve_nonReservedStatus_throwsIllegalStateException() { ... }
-
-    @Test @DisplayName("reject_RESERVED상태_REJECTED로전환")
-    void reject_reservedOrder_setsRejected() { ... }
-
-    @Test @DisplayName("release_CONFIRMED상태_RELEASE로전환")
-    void release_confirmedOrder_setsRelease() { ... }
-
-    @Test @DisplayName("release_CONFIRMED아닌상태_예외발생")
-    void release_nonConfirmedStatus_throwsIllegalStateException() { ... }
-}
-```
-
-**`ProductionServiceTest.java`**
-
-```java
-@DisplayName("ProductionService 테스트")
-class ProductionServiceTest {
-    @Test @DisplayName("getActiveProductions_PRODUCING주문존재_목록반환")
-    void getActiveProductions_hasProducingOrders_returnsList() { ... }
-
-    @Test @DisplayName("getQueueStatus_큐에항목존재_FIFO순서반환")
-    void getQueueStatus_queueHasItems_returnsInFifoOrder() { ... }
-
-    @Test @DisplayName("completeProduction_생산완료_재고증가및CONFIRMED전환")
-    void completeProduction_validOrderId_increasesStockAndSetsConfirmed() { ... }
-
-    @Test @DisplayName("completeProduction_큐에없는주문ID_예외발생")
-    void completeProduction_orderNotInQueue_throwsException() { ... }
-}
-```
-
-**`MonitorServiceTest.java`**
-
-```java
-@DisplayName("MonitorService 테스트")
-class MonitorServiceTest {
-    @Test @DisplayName("getOrderCountByStatus_REJECTED제외_상태별건수반환")
-    void getOrderCountByStatus_excludesRejected_returnsCountByStatus() { ... }
-
-    @Test @DisplayName("getInventoryStatus_재고0인시료_DEPLETED반환")
-    void getInventoryStatus_zeroStock_returnsDepleted() { ... }
-
-    @Test @DisplayName("getInventoryStatus_재고부족_SHORTAGE반환")
-    void getInventoryStatus_partialStock_returnsShortage() { ... }
-
-    @Test @DisplayName("getInventoryStatus_재고충분_SUFFICIENT반환")
-    void getInventoryStatus_sufficientStock_returnsSufficient() { ... }
-}
-```
-
-### 제약 조건
-
-- `System.out` 사용 금지 (서비스 로직 내)
-- Spring / Quarkus / Mockito 사용 금지
-- `approve()` 내 생산량 계산식 정확히 적용: `(int) Math.ceil(shortage / (sample.getYield() * 0.9))`
-- `getInventoryStatus()` DEPLETED 판정은 `stock == 0` 조건 우선 적용 (pendingDemand 무관)
+> 상세 구현 코드는 [`docs/phase3_plan.md`](docs/phase3_plan.md)를 참조한다.
 
 ### 완료 기준
 
-- `./gradlew test --tests "org.example.service.*"` GREEN
+- `./gradlew test --tests "org.example.service.*"` GREEN (총 23개 — SampleServiceTest 6, OrderServiceTest 9, ProductionServiceTest 4, MonitorServiceTest 4)
 - `shortage=10, yield=0.9` → `actualProduction=13` 검증 통과
 - REJECTED 주문이 `getOrderCountByStatus()` 결과에 미포함 검증 통과
+- `stock==0` 시료에 pendingDemand 존재해도 DEPLETED 반환 검증 통과
 
 ---
 
