@@ -1,12 +1,18 @@
 package org.example.controller;
 
+import org.example.dummy.OrderGenerator;
+import org.example.dummy.SampleGenerator;
 import org.example.view.ConsoleView;
 
 public class DummyController {
 
+    private final SampleGenerator sampleGenerator;
+    private final OrderGenerator orderGenerator;
     private final ConsoleView view;
 
-    public DummyController(ConsoleView view) {
+    public DummyController(SampleGenerator sampleGenerator, OrderGenerator orderGenerator, ConsoleView view) {
+        this.sampleGenerator = sampleGenerator;
+        this.orderGenerator = orderGenerator;
         this.view = view;
     }
 
@@ -19,10 +25,18 @@ public class DummyController {
     }
 
     public void generateSamples() {
-        view.showInfo("더미 시료 데이터 생성 기능은 Phase 5에서 구현됩니다.");
+        int count = view.readInt("생성할 시료 수: ");
+        sampleGenerator.generate(count);
+        view.showSuccess(count + "개의 더미 시료 데이터가 생성되었습니다.");
     }
 
     public void generateOrders() {
-        view.showInfo("더미 주문 데이터 생성 기능은 Phase 5에서 구현됩니다.");
+        int count = view.readInt("생성할 주문 수: ");
+        try {
+            orderGenerator.generate(count);
+            view.showSuccess(count + "개의 더미 주문 데이터가 생성되었습니다.");
+        } catch (IllegalStateException e) {
+            view.showError(e.getMessage());
+        }
     }
 }

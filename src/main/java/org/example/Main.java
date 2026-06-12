@@ -5,6 +5,8 @@ import org.example.controller.MonitorController;
 import org.example.controller.OrderController;
 import org.example.controller.ProductionController;
 import org.example.controller.SampleController;
+import org.example.dummy.OrderGenerator;
+import org.example.dummy.SampleGenerator;
 import org.example.model.ProductionItem;
 import org.example.repository.InventoryRepository;
 import org.example.repository.OrderRepository;
@@ -48,11 +50,13 @@ public class Main {
         ConsoleView view = new ConsoleView(new Scanner(System.in));
 
         // Controller 초기화
-        SampleController     sampleCtrl     = new SampleController(sampleService, view);
-        OrderController      orderCtrl      = new OrderController(orderService, view);
-        ProductionController productionCtrl = new ProductionController(productionService, view);
-        MonitorController    monitorCtrl    = new MonitorController(monitorService, inventoryRepo, view);
-        DummyController      dummyCtrl      = new DummyController(view);
+        SampleController     sampleCtrl      = new SampleController(sampleService, view);
+        OrderController      orderCtrl       = new OrderController(orderService, view);
+        ProductionController productionCtrl  = new ProductionController(productionService, view);
+        MonitorController    monitorCtrl     = new MonitorController(monitorService, inventoryRepo, view);
+        SampleGenerator      sampleGenerator = new SampleGenerator(sampleRepo, inventoryRepo);
+        OrderGenerator       orderGenerator  = new OrderGenerator(orderRepo, sampleRepo);
+        DummyController      dummyCtrl       = new DummyController(sampleGenerator, orderGenerator, view);
 
         // 메인 루프
         while (true) {

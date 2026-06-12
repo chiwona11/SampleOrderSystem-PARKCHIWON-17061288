@@ -14,7 +14,7 @@
 | 2 | 저장소 레이어 | SampleRepo, OrderRepo, InventoryRepo + 테스트 17개 | [docs/phase2_plan.md](docs/phase2_plan.md) | ✅ 완료 |
 | 3 | 서비스 레이어 | SampleService, OrderService, ProductionService, MonitorService + 테스트 23개 | [docs/phase3_plan.md](docs/phase3_plan.md) | ✅ 완료 |
 | 4 | 프레젠테이션 | Controller 5종, ConsoleView, Main | [docs/phase4_plan.md](docs/phase4_plan.md) | ✅ 완료 |
-| 5 | 더미 데이터 | SampleGenerator, OrderGenerator, DummyController | docs/phase5_plan.md | ⬜ 미착수 |
+| 5 | 더미 데이터 | SampleGenerator, OrderGenerator, DummyController | [docs/phase5_plan.md](docs/phase5_plan.md) | ✅ 완료 |
 
 ### 레이어 의존성 흐름
 
@@ -243,17 +243,21 @@ src/main/java/org/example/Main.java                               (생성)
 
 ---
 
-## Phase 5: 더미 데이터 도구
+## Phase 5: 더미 데이터 도구 ✅
+
+> **상태**: 완료  
+> **상세 설계 정본**: [`docs/phase5_plan.md`](docs/phase5_plan.md)  
+> 구현 명세 및 완전한 코드는 위 문서를 참조한다.
 
 ### Phase 목표
 
-JavaFaker(한국 로케일)를 사용하여 현실적인 시료·주문 더미 데이터를 생성하는 Generator 클래스를 구현하고, `DummyController`를 완성한다.
+JavaFaker(한국 로케일)를 사용하여 반도체 WF 관련 시료·주문 더미 데이터를 생성하는 Generator 클래스를 구현하고, `DummyController`를 완성한다.
 
 ### FR-N / NFR-N 매핑
 
 | 요구사항 | 설명 |
 |---------|------|
-| FR-6-1 | `SampleGenerator` — JavaFaker로 시료 데이터 생성 후 `data/samples.json`에 저장 |
+| FR-6-1 | `SampleGenerator` — 반도체 WF 시료명 10종 목록에서 랜덤 선택, 재고 0으로 초기화 |
 | FR-6-2 | `OrderGenerator` — 등록된 시료 ID 참조하여 주문 데이터 생성 후 `data/orders.json`에 저장 |
 
 ### 변경 대상 파일 목록
@@ -267,74 +271,11 @@ src/main/java/org/example/Main.java                               (수정 — Du
 
 ### 구현 상세
 
-#### `dummy/SampleGenerator.java`
-
-```java
-public class SampleGenerator {
-    // id: "S-" + System.currentTimeMillis() + "-" + i (중복 방지)
-    // name: faker.commerce().productName() + " 시료"
-    // avgProductionTime: 10 ~ 480 (분)
-    // yield: 0.70 ~ 0.99 (소수점 2자리)
-    // 등록 시 InventoryRepository에 stock=0으로 초기화
-    public void generate(int count) { ... }
-}
-```
-
-#### `dummy/OrderGenerator.java`
-
-```java
-public class OrderGenerator {
-    // 시료 없으면 IllegalStateException("시료 데이터가 없습니다. 먼저 시료 더미 데이터를 생성하세요.")
-    // sampleId: 기존 시료 목록에서 랜덤 선택
-    // customerName: faker.name().fullName()
-    // quantity: 1 ~ 100 / status: RESERVED
-    public void generate(int count) { ... }
-}
-```
-
-#### `controller/DummyController.java` (완성)
-
-```java
-public class DummyController {
-    private final SampleGenerator sampleGenerator;
-    private final OrderGenerator  orderGenerator;
-    private final ConsoleView view;
-
-    // 메뉴 6-1: 생성 개수 입력 → sampleGenerator.generate(count)
-    public void generateSamples() { ... }
-
-    // 메뉴 6-2: 생성 개수 입력 → orderGenerator.generate(count), 예외 시 showError
-    public void generateOrders() { ... }
-
-    public void handle(String subMenu) {
-        switch (subMenu) {
-            case "1" -> generateSamples();
-            case "2" -> generateOrders();
-            default  -> view.showError("잘못된 메뉴 입력입니다.");
-        }
-    }
-}
-```
-
-#### `Main.java` 수정 (DummyController DI 부분)
-
-```java
-// Phase 4의 DummyController 생성 라인을 아래로 교체
-SampleGenerator sampleGenerator = new SampleGenerator(sampleRepo, inventoryRepo);
-OrderGenerator  orderGenerator  = new OrderGenerator(orderRepo, sampleRepo);
-DummyController dummyCtrl = new DummyController(sampleGenerator, orderGenerator, view);
-```
-
-### 제약 조건
-
-- JavaFaker 의존성은 Phase 1 `build.gradle`에 이미 추가되어 있어야 함
-- 시료 없이 주문 생성 시도 시 생성 중단 + 명확한 메시지 출력 (시스템 종료 없음)
-- 생성 데이터는 기존 데이터에 추가 (덮어쓰기 금지)
-- `System.out` 호출 금지 — ConsoleView 경유
+> 상세 구현 코드는 [`docs/phase5_plan.md`](docs/phase5_plan.md)를 참조한다.
 
 ### 완료 기준
 
-- 메뉴 6-1 실행 → `data/samples.json`에 faker 시료 데이터 추가 확인
+- 메뉴 6-1 실행 → `data/samples.json`에 반도체 WF 시료 데이터 추가 확인
 - 메뉴 6-2 실행 → `data/orders.json`에 faker 주문 데이터 추가 확인
 - 시료 없이 주문 생성 시 에러 메시지 출력 후 메뉴로 복귀 확인
 - `./gradlew build` 에러 없음 / `./gradlew test` 전체 GREEN
