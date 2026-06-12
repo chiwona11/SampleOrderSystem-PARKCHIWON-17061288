@@ -13,7 +13,7 @@
 | 1 | 기반 구조 | 모델 6종, CrudRepository, JsonFileUtil | [docs/phase1_plan.md](docs/phase1_plan.md) | ✅ 완료 |
 | 2 | 저장소 레이어 | SampleRepo, OrderRepo, InventoryRepo + 테스트 17개 | [docs/phase2_plan.md](docs/phase2_plan.md) | ✅ 완료 |
 | 3 | 서비스 레이어 | SampleService, OrderService, ProductionService, MonitorService + 테스트 23개 | [docs/phase3_plan.md](docs/phase3_plan.md) | ✅ 완료 |
-| 4 | 프레젠테이션 | Controller 5종, ConsoleView, Main | docs/phase4_plan.md | ⬜ 미착수 |
+| 4 | 프레젠테이션 | Controller 5종, ConsoleView, Main | [docs/phase4_plan.md](docs/phase4_plan.md) | ✅ 완료 |
 | 5 | 더미 데이터 | SampleGenerator, OrderGenerator, DummyController | docs/phase5_plan.md | ⬜ 미착수 |
 
 ### 레이어 의존성 흐름
@@ -200,7 +200,11 @@ src/test/java/org/example/service/MonitorServiceTest.java         (생성)
 
 ---
 
-## Phase 4: 프레젠테이션 레이어
+## Phase 4: 프레젠테이션 레이어 ✅
+
+> **상태**: 완료  
+> **상세 설계 정본**: [`docs/phase4_plan.md`](docs/phase4_plan.md)  
+> 구현 명세 및 완전한 코드는 위 문서를 참조한다.
 
 ### Phase 목표
 
@@ -228,161 +232,7 @@ src/main/java/org/example/Main.java                               (생성)
 
 ### 구현 상세
 
-#### `view/ConsoleView.java`
-
-모든 `System.out.println` / `System.out.print` 호출은 이 클래스에서만 허용.
-
-```java
-public class ConsoleView {
-    private final Scanner scanner;
-
-    public ConsoleView(Scanner scanner) { this.scanner = scanner; }
-
-    public void showMainMenu() {
-        // 메인 메뉴 전체 출력 (1.시료관리 ~ 6.더미데이터 ~ 0.종료)
-    }
-
-    // 입력 메서드
-    public String readLine(String prompt) { System.out.print(prompt); return scanner.nextLine().trim(); }
-    public int readInt(String prompt) { /* readLine → Integer.parseInt, 실패 시 재입력 */ }
-    public double readDouble(String prompt) { /* readLine → Double.parseDouble */ }
-    public long readLong(String prompt) { /* readLine → Long.parseLong */ }
-
-    // 출력 메서드
-    public void showSuccess(String message) { System.out.println("[SUCCESS] " + message); }
-    public void showError(String message) { System.out.println("[ERROR] " + message); }
-    public void showInfo(String message) { System.out.println(message); }
-
-    // 테이블 출력 메서드 (컬럼 구분: | 로 정렬)
-    public void showSampleTable(List<Sample> samples) { /* 컬럼: ID | 이름 | 평균생산시간(분) | 수율 */ }
-    public void showOrderTable(List<Order> orders) { /* 컬럼: 주문ID | 시료ID | 고객명 | 수량 | 상태 | 접수일시 */ }
-    public void showInventoryStatusTable(Map<String, InventoryStatus> statusMap, List<Inventory> inventories) { /* 컬럼: 시료ID | 재고 | 상태 */ }
-    public void showOrderCountTable(Map<OrderStatus, Long> countMap) { /* 컬럼: 상태 | 건수 */ }
-    public void showProductionQueueTable(List<ProductionItem> queue) { /* 컬럼: 주문ID | 시료ID | 필요수량 | 실생산량 | 총생산시간(분) | 큐등록일시 */ }
-}
-```
-
-#### `controller/SampleController.java`
-
-```java
-public class SampleController {
-    // handle("1") → register()   : id, name, avgProductionTime, yield 입력 → register()
-    // handle("2") → listAll()    : findAll() → showSampleTable()
-    // handle("3") → search()     : keyword 입력 → search() → showSampleTable()
-    // 예외는 view.showError()로 출력
-    public void handle(String subMenu) { ... }
-}
-```
-
-#### `controller/OrderController.java`
-
-```java
-public class OrderController {
-    // handle("1") → placeOrder() : sampleId, customerName, quantity 입력
-    // handle("2") → approve()    : orderId 입력 → approve()
-    // handle("3") → reject()     : orderId 입력 → reject()
-    // handle("4") → release()    : orderId 입력 → release() (메인메뉴 4번에서 호출)
-    public void handle(String subMenu) { ... }
-}
-```
-
-#### `controller/ProductionController.java`
-
-```java
-public class ProductionController {
-    // handle("1") → getActiveProductions() → showOrderTable()
-    // handle("2") → getQueueStatus() → showProductionQueueTable()
-    // handle("3") → orderId 입력 → completeProduction()
-    public void handle(String subMenu) { ... }
-}
-```
-
-#### `controller/MonitorController.java`
-
-```java
-public class MonitorController {
-    // handle("1") → getOrderCountByStatus() → showOrderCountTable()
-    // handle("2") → getInventoryStatus() + inventoryRepo.findAll() → showInventoryStatusTable()
-    public void handle(String subMenu) { ... }
-}
-```
-
-#### `controller/DummyController.java` (Phase 4 스텁)
-
-```java
-public class DummyController {
-    private final ConsoleView view;
-
-    public DummyController(ConsoleView view) { this.view = view; }
-
-    public void generateSamples() { view.showInfo("더미 시료 데이터 생성 기능은 Phase 5에서 구현됩니다."); }
-    public void generateOrders()  { view.showInfo("더미 주문 데이터 생성 기능은 Phase 5에서 구현됩니다."); }
-
-    public void handle(String subMenu) {
-        switch (subMenu) {
-            case "1" -> generateSamples();
-            case "2" -> generateOrders();
-            default  -> view.showError("잘못된 메뉴 입력입니다.");
-        }
-    }
-}
-```
-
-#### `Main.java`
-
-```java
-public class Main {
-    public static void main(String[] args) {
-        File samplesFile   = new File("data/samples.json");
-        File ordersFile    = new File("data/orders.json");
-        File inventoryFile = new File("data/inventory.json");
-
-        SampleRepository    sampleRepo    = new SampleRepository(samplesFile);
-        OrderRepository     orderRepo     = new OrderRepository(ordersFile);
-        InventoryRepository inventoryRepo = new InventoryRepository(inventoryFile);
-
-        List<ProductionItem> productionQueue = new ArrayList<>();
-
-        SampleService     sampleService     = new SampleService(sampleRepo, inventoryRepo);
-        OrderService      orderService      = new OrderService(orderRepo, sampleRepo, inventoryRepo, productionQueue);
-        ProductionService productionService = new ProductionService(productionQueue, orderRepo, inventoryRepo);
-        MonitorService    monitorService    = new MonitorService(orderRepo, inventoryRepo, sampleRepo);
-
-        ConsoleView view = new ConsoleView(new Scanner(System.in));
-        SampleController     sampleCtrl     = new SampleController(sampleService, view);
-        OrderController      orderCtrl      = new OrderController(orderService, view);
-        ProductionController productionCtrl = new ProductionController(productionService, view);
-        MonitorController    monitorCtrl    = new MonitorController(monitorService, inventoryRepo, view);
-        DummyController      dummyCtrl      = new DummyController(view);
-
-        while (true) {
-            view.showMainMenu();
-            String mainMenu = view.readLine("메뉴 선택: ");
-            if ("0".equals(mainMenu)) { view.showInfo("시스템을 종료합니다."); break; }
-            String subMenu = view.readLine("세부 메뉴 선택: ");
-            try {
-                switch (mainMenu) {
-                    case "1" -> sampleCtrl.handle(subMenu);
-                    case "2" -> orderCtrl.handle(subMenu);
-                    case "3" -> monitorCtrl.handle(subMenu);
-                    case "4" -> orderCtrl.handle("4");
-                    case "5" -> productionCtrl.handle(subMenu);
-                    case "6" -> dummyCtrl.handle(subMenu);
-                    default  -> view.showError("잘못된 메뉴 입력입니다.");
-                }
-            } catch (IllegalArgumentException | IllegalStateException e) {
-                view.showError(e.getMessage());
-            }
-        }
-    }
-}
-```
-
-### 제약 조건
-
-- Controller 내부에 비즈니스 로직 금지 (Service 호출 + View 출력만 허용)
-- `System.out` 직접 호출 금지 — `view.showSuccess()` / `view.showError()` / `view.showInfo()` 경유
-- `Main.java`에서만 `new` 키워드로 객체 생성 (DI 조립점)
+> 상세 구현 코드는 [`docs/phase4_plan.md`](docs/phase4_plan.md)를 참조한다.
 
 ### 완료 기준
 
